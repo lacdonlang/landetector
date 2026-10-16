@@ -85,12 +85,20 @@ struct NetworkCard: View {
                         item("公网 IPv6", pub.ipv6)
                         item("运营商", pub.isp)
                     }
+                    item("上次扫描", lastScanText)
                 }
                 .font(.caption)
             }
             .padding(12)
             .glassEffect(.regular, in: .rect(cornerRadius: 14))
         }
+    }
+
+    private var lastScanText: String? {
+        if model.isScanning { return "正在扫描…" }
+        guard let date = model.lastScanDate else { return nil }
+        let time = date.formatted(date: .omitted, time: .shortened)
+        return model.lastScan.map { String(format: "%@ · 用时 %.1f 秒", time, $0.duration) } ?? time
     }
 
     @ViewBuilder

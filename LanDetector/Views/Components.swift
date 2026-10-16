@@ -81,7 +81,13 @@ struct StatusDot: View {
             .frame(width: 8, height: 8)
             .shadow(color: isOnline ? .green.opacity(0.6) : .clear, radius: 3)
             .help(isOnline ? "在线" : "离线")
+            .accessibilityLabel(isOnline ? "在线" : "离线")
     }
+}
+
+/// "<1 ms", "8 ms" – one format everywhere latency is shown.
+func latencyString(_ ms: Double) -> String {
+    ms < 1 ? "<1 ms" : String(format: "%.0f ms", ms)
 }
 
 func latencyColor(_ ms: Double) -> Color {
@@ -98,7 +104,7 @@ struct LatencyText: View {
 
     var body: some View {
         if let latency {
-            Text(latency < 1 ? "<1 ms" : String(format: "%.0f ms", latency))
+            Text(verbatim: latencyString(latency))
                 .monospacedDigit()
                 .foregroundStyle(latencyColor(latency))
         } else {
@@ -175,42 +181,15 @@ struct LatencyChart: View {
         }
         .chartXAxis(.hidden)
         .chartYAxis {
+            // Sub-millisecond LAN latencies need a decimal, or every label reads "0".
+            let fine = (values.max() ?? 0) < 10
             AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
-                AxisValueLabel { if let v = value.as(Double.self) { Text("\(Int(v))") } }
+                AxisValueLabel {
+                    if let v = value.as(Double.self) { Text(verbatim: String(format: fine ? "%.1f" : "%.0f", v)) }
+                }
             }
         }
-    }
-}
-
-/// Compact statistic tile for the content header.
-struct StatTile: View {
-    let title: String
-    let value: String
-    let symbol: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 30, height: 30)
-                .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(width: 148, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 14))
     }
 }
 

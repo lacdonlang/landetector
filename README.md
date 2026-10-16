@@ -58,6 +58,7 @@ cd Packages/LanDetectorKit && swift test
 Debug 构建内置两个由环境变量开启的自检钩子（`LanDetector/Support/DebugSnapshot.swift`）：
 
 - `LANDETECTOR_SNAPSHOT_DIR=<目录>`：依次切换列表 / 卡片 / 深色模式并把窗口渲染成 PNG（无需屏幕录制权限；玻璃材质的侧栏与检查器渲染不出来）。
+- `LANDETECTOR_GALLERY_DIR=<目录>`：把侧栏、检查器（本机 / 网关 / 普通设备、深浅色）、设置各页、端口扫描面板、菜单栏面板分别放进普通离屏窗口渲染，弥补上一项拍不到玻璃面板的不足；主窗口按 1440 宽截图。
 - `LANDETECTOR_RESIZE_TEST=1`（可加 `LANDETECTOR_CHAOS=1`）：反复缩放窗口并切换视图与检查器，用于回归 SwiftUI 布局循环崩溃。详情列内容必须保持 `idealWidth: 0`，否则检查器打开时窗口变窄会触发 AppKit "Update Constraints" 死循环。
 
 ```bash

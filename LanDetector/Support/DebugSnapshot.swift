@@ -1,5 +1,7 @@
 #if DEBUG
 import AppKit
+import LanDetectorKit
+import SwiftUI
 
 /// Debug-only: renders the main window to PNG files without needing screen-recording permission.
 ///   LANDETECTOR_SNAPSHOT_DIR=/tmp/shots  LanDetector.app/Contents/MacOS/LanDetector
@@ -7,6 +9,12 @@ import AppKit
 enum DebugSnapshot {
     static func scheduleIfRequested() {
         if ProcessInfo.processInfo.environment["LANDETECTOR_RESIZE_TEST"] != nil { scheduleResizeTest() }
+        if let dir = ProcessInfo.processInfo.environment["LANDETECTOR_GALLERY_DIR"] {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(9))
+                await renderGallery(to: URL(fileURLWithPath: dir))
+            }
+        }
         guard let dir = ProcessInfo.processInfo.environment["LANDETECTOR_SNAPSHOT_DIR"] else { return }
         let base = URL(fileURLWithPath: dir)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -70,6 +78,83 @@ enum DebugSnapshot {
             let model = AppModel.shared
             if let d = model.visibleDevices.first(where: { !$0.ipv6.isEmpty }) ?? model.visibleDevices.first { model.selection = [d.id] }
         }
+    }
+
+    /// Renders every panel in a plain offscreen window: the glass sidebar / inspector columns of the real
+    /// window are composited by the window server and cannot be captured in-process.
+    static func renderGallery(to base: URL) async {
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        let model = AppModel.shared
+        let log: (String) -> Void = { FileHandle.standardError.write(Data("gallery: \($0)\n".utf8)) }
+        for dark in [true, false] {
+            let suffix = dark ? "dark" : "light"
+            await renderHosted(SidebarView(), size: CGSize(width: 260, height: 860), dark: dark,
+                               to: base.appendingPathComponent("sidebar-\(suffix).png"))
+            let picks: [(String, Device?)] = [
+                ("self", model.devices.first(where: \.isCurrentDevice)),
+                ("gateway", model.devices.first(where: \.isGateway)),
+                ("plain", model.devices.first { !$0.isGateway && !$0.isCurrentDevice && $0.isOnline }),
+            ]
+            for (name, candidate) in picks {
+                guard let device = candidate else { continue }
+                model.selection = [device.id]
+                await renderHosted(DeviceInspector(), size: CGSize(width: 360, height: 1700), dark: dark,
+                                   to: base.appendingPathComponent("inspector-\(name)-\(suffix).png"))
+            }
+        }
+        model.selection = Set(model.devices.prefix(3).map(\.id))
+        await renderHosted(DeviceInspector(), size: CGSize(width: 360, height: 700), dark: true,
+                           to: base.appendingPathComponent("inspector-multi-dark.png"))
+        for tab in [SettingsTab.general, .scan, .data] {
+            UserDefaults.standard.set(tab.rawValue, forKey: Prefs.settingsTab)
+            await renderHosted(SettingsView(), size: CGSize(width: 560, height: 470), dark: true,
+                               to: base.appendingPathComponent("settings-\(tab.rawValue).png"))
+        }
+        UserDefaults.standard.set(SettingsTab.general.rawValue, forKey: Prefs.settingsTab)
+        if let gw = model.devices.first(where: \.isGateway) { model.selection = [gw.id] }
+        await renderHosted(PortScanSheet(), size: CGSize(width: 500, height: 470), dark: true,
+                           to: base.appendingPathComponent("portscan-sheet.png"))
+        await renderHosted(MenuBarView(), size: CGSize(width: 340, height: 560), dark: true,
+                           to: base.appendingPathComponent("menubar.png"))
+        if let gw = model.devices.first(where: \.isGateway) {
+            model.requestRename(gw.id)
+            await renderHosted(DeviceInspector(), size: CGSize(width: 360, height: 420), dark: true,
+                               to: base.appendingPathComponent("inspector-rename-dark.png"))
+        }
+        // The real window, table and grid, at a common laptop width.
+        if let window = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 600 }) {
+            var frame = window.frame
+            frame.size = CGSize(width: 1440, height: 860)
+            window.setFrame(frame, display: true)
+        }
+        if let me = model.devices.first(where: \.isCurrentDevice) { model.selection = [me.id] }
+        model.viewMode = .table
+        try? await Task.sleep(for: .seconds(1))
+        capture(to: base.appendingPathComponent("window-table.png"))
+        model.viewMode = .grid
+        try? await Task.sleep(for: .seconds(1))
+        capture(to: base.appendingPathComponent("window-grid.png"))
+        model.viewMode = .table
+        log("done")
+    }
+
+    private static func renderHosted<V: View>(_ view: V, size: CGSize, dark: Bool, to url: URL) async {
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
+        host.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(contentRect: NSRect(x: -30000, y: -30000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.backgroundColor = .windowBackgroundColor
+        window.contentView = host
+        window.orderFrontRegardless()
+        try? await Task.sleep(for: .milliseconds(900))
+        host.layoutSubtreeIfNeeded()
+        if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: url)
+        }
+        window.orderOut(nil)
     }
 
     static func capture(to url: URL) {

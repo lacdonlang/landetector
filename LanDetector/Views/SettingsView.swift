@@ -76,7 +76,7 @@ private struct ScanSettings: View {
         @Bindable var model = model
         Form {
             Section {
-                Picker("扫描", selection: $model.selectedRangeID) {
+                Picker("当前范围", selection: $model.selectedRangeID) {
                     Text("整个子网").tag(UUID?.none)
                     ForEach(model.rangePresets) { preset in
                         Text(preset.title).tag(UUID?.some(preset.id))

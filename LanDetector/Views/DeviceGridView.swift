@@ -61,7 +61,7 @@ struct DeviceCard: View {
                             .foregroundStyle(.secondary)
                     }
                     HStack(spacing: 3) {
-                        if model.sessionNewIDs.contains(device.id) { Chip(text: "新", color: .orange) }
+                        if model.isRecent(device) { Chip(text: "新", color: .orange) }
                         if device.isFavorite {
                             Image(systemName: "star.fill").foregroundStyle(.yellow).imageScale(.small)
                         }

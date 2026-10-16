@@ -70,6 +70,43 @@ struct AppCommands: Commands {
             Button("刷新网络接口") { model.refreshInterfaces() }
         }
 
+        CommandMenu("设备") {
+            let selected = model.selectedDevices
+            let single = selected.count == 1 ? selected.first : nil
+            Button("在浏览器中打开") { if let d = single { DeviceActions.openWeb(d) } }
+                .keyboardShortcut("o")
+                .disabled(single?.ipv4 == nil)
+            Button("重命名…") { if let d = single { model.requestRename(d.id) } }
+                .disabled(single == nil)
+            Button(selected.allSatisfy(\.isFavorite) && !selected.isEmpty ? "取消收藏" : "收藏") {
+                model.toggleFavorite(model.selection)
+            }
+            .keyboardShortcut("d")
+            .disabled(selected.isEmpty)
+            Divider()
+            Button("拷贝 IP 地址") {
+                DeviceActions.copy(selected.compactMap { $0.ipv4?.description }.joined(separator: "\n"))
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .disabled(selected.allSatisfy { $0.ipv4 == nil })
+            Button("拷贝 MAC 地址") {
+                DeviceActions.copy(selected.compactMap { $0.mac?.description }.joined(separator: "\n"))
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option, .shift])
+            .disabled(selected.allSatisfy { $0.mac == nil })
+            Divider()
+            Button("扫描端口…") { model.showPortScanSheet = true }
+                .disabled(selected.isEmpty)
+            Button("网络唤醒") {
+                for d in selected { DeviceActions.wake(d, broadcast: model.interface?.broadcast) }
+            }
+            .disabled(selected.allSatisfy { $0.mac == nil })
+            Divider()
+            Button("从列表中移除") { model.forget(model.selection) }
+                .keyboardShortcut(.delete, modifiers: [.command])
+                .disabled(selected.isEmpty)
+        }
+
         CommandGroup(before: .toolbar) {
             Button("列表视图") { model.viewMode = .table }
                 .keyboardShortcut("1")

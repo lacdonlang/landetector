@@ -67,6 +67,10 @@ final class AppModel {
     private(set) var lastScan: ScanSummary?
     private(set) var lastScanDate: Date?
     private(set) var sessionNewIDs: Set<String> = []
+    /// When LanDetector first mapped this network; devices found in that first pass are not "new".
+    private(set) var networkBaseline: Date?
+    /// Set by the list (Return key, context menu, Device menu) to make the inspector start renaming.
+    var renameRequestID: String?
 
     // MARK: Port scan
     private(set) var portScanRunning = false
@@ -225,10 +229,11 @@ final class AppModel {
         progress = 1
         let created = Set(inventory.devices.keys).subtracting(knownBefore)
         let newOnline = created.compactMap { inventory.devices[$0] }.filter(\.isOnline)
-        sessionNewIDs.formUnion(newOnline.map(\.id))
-        // Only alert about genuinely new devices on a network we already know.
-        if !knownBefore.isEmpty, !newOnline.isEmpty, Prefs.notifyEnabled {
-            Notifier.notifyNewDevices(newOnline)
+        // The first scan of a network finds everything – that is not news. Only devices that join a network we
+        // already know are highlighted (and announced).
+        if !knownBefore.isEmpty, !newOnline.isEmpty {
+            sessionNewIDs.formUnion(newOnline.map(\.id))
+            if Prefs.notifyEnabled { Notifier.notifyNewDevices(newOnline) }
         }
         publish()
         scheduleSave()
@@ -334,6 +339,7 @@ final class AppModel {
 
     private func publish() {
         devices = inventory.allDevices
+        networkBaseline = devices.lazy.map(\.firstSeen).min()
     }
 
     private func scheduleSave() {
@@ -388,8 +394,28 @@ final class AppModel {
         return c
     }
 
+    /// Joined in the last 24 hours, but after the network's first scan.
     func isRecent(_ d: Device) -> Bool {
-        sessionNewIDs.contains(d.id) || d.firstSeen > Date().addingTimeInterval(-24 * 3600)
+        if sessionNewIDs.contains(d.id) { return true }
+        guard d.firstSeen > Date().addingTimeInterval(-24 * 3600), let baseline = networkBaseline else { return false }
+        return d.firstSeen > baseline.addingTimeInterval(15 * 60)
+    }
+
+    /// One-line status for the window subtitle.
+    var statusSummary: String {
+        let range = selectedRange.map { " · 范围 \($0.title)" } ?? ""
+        if isScanning { return "正在扫描 \(Int(progress * 100))%\(range)" }
+        let c = counts
+        var parts = ["\(c.online) 台在线", "共 \(c.all) 台"]
+        if c.recent > 0 { parts.append("\(c.recent) 台新设备") }
+        if isLive { parts.insert("实时监控", at: 0) }
+        return parts.joined(separator: " · ") + range
+    }
+
+    func requestRename(_ id: String) {
+        selection = [id]
+        showInspector = true
+        renameRequestID = id
     }
 
     var selectedDevices: [Device] { devices.filter { selection.contains($0.id) } }

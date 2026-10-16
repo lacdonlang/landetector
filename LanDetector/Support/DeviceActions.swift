@@ -55,6 +55,12 @@ enum DeviceActions {
         NSPasteboard.general.setString(text, forType: .string)
     }
 
+    static func hasWeb(_ d: Device) -> Bool {
+        d.customURL != nil || d.upnp?.presentationURL != nil
+            || !Set(d.openPorts).isDisjoint(with: [80, 443, 8080, 8000, 8081, 8443, 8888, 5000, 5001])
+            || d.services.contains { $0.type == "_http._tcp" || $0.type == "_https._tcp" }
+    }
+
     static func hasSSH(_ d: Device) -> Bool {
         d.openPorts.contains(22) || d.services.contains { $0.type == "_ssh._tcp" || $0.type == "_sftp-ssh._tcp" }
     }
@@ -201,4 +207,9 @@ enum Exporter {
         guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode([CustomNameRecord].self, from: data)
     }
+}
+
+extension BonjourService {
+    /// Service types LanDetector has a friendly name for.
+    var isKnownType: Bool { BonjourService.knownTypes[type] != nil }
 }

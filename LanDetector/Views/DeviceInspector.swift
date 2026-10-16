@@ -26,6 +26,8 @@ private struct DeviceDetail: View {
     @State private var name = ""
     @State private var notes = ""
     @State private var customURL = ""
+    @State private var isRenaming = false
+    @FocusState private var nameFocused: Bool
     @AppStorage(Prefs.presenceWindow) private var presenceWindow = PresenceWindow.day
 
     var body: some View {
@@ -66,7 +68,9 @@ private struct DeviceDetail: View {
                     }
                 }
                 InfoRow(label: "型号", value: device.model)
-                InfoRow(label: "制造商", value: device.manufacturer)
+                if device.manufacturer != device.vendor {
+                    InfoRow(label: "制造商", value: device.manufacturer)
+                }
                 InfoRow(label: "系统", value: device.osName)
                 if let upnp = device.upnp {
                     InfoRow(label: "UPnP 设备", value: [upnp.manufacturer, upnp.modelName, upnp.modelNumber]
@@ -78,7 +82,8 @@ private struct DeviceDetail: View {
 
             if !device.services.isEmpty {
                 Section("Bonjour 服务（\(device.services.count)）") {
-                    ForEach(device.services) { service in
+                    // Recognised service types first; private ones such as `_asquic._udp` go last.
+                    ForEach(device.services.sorted { ($0.isKnownType ? 0 : 1, $0.typeDescription) < ($1.isKnownType ? 0 : 1, $1.typeDescription) }) { service in
                         ServiceRow(service: service)
                     }
                 }
@@ -166,13 +171,25 @@ private struct DeviceDetail: View {
                 }
             }
 
-            Section("备注") {
-                TextField("自定义网址（打开网页时使用）", text: $customURL)
+            Section {
+                TextField("网址", text: $customURL, prompt: Text(verbatim: device.ipv4.map { "http://\($0)" } ?? "http://"))
                     .onSubmit { model.edit(device.id) { $0.customURL = customURL.nilIfEmpty } }
-                TextEditor(text: $notes)
-                    .frame(minHeight: 60)
-                    .font(.body)
-                    .scrollContentBackground(.hidden)
+                ZStack(alignment: .topLeading) {
+                    if notes.isEmpty {
+                        Text("添加备注…")
+                            .foregroundStyle(.tertiary)
+                            .padding(.leading, 5)
+                            .allowsHitTesting(false)
+                    }
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 64)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
+                }
+            } header: {
+                Text("备注")
+            } footer: {
+                Text("网址用于“在浏览器中打开”，留空时自动选择设备的网页端口。")
             }
         }
         .formStyle(.grouped)
@@ -190,7 +207,15 @@ private struct DeviceDetail: View {
         }
         .onDisappear {
             if notes != device.notes { model.edit(device.id) { $0.notes = notes } }
-            if name != (device.customName ?? "") { model.rename(device.id, to: name) }
+            if isRenaming { commitRename() }
+        }
+        .onChange(of: model.renameRequestID, initial: true) { _, id in
+            guard id == device.id else { return }
+            model.renameRequestID = nil
+            startRenaming()
+        }
+        .onChange(of: nameFocused) { _, focused in
+            if !focused && isRenaming { commitRename() }
         }
         .onChange(of: customURL) { _, value in
             guard value.nilIfEmpty != device.customURL else { return }
@@ -199,20 +224,43 @@ private struct DeviceDetail: View {
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            DeviceIcon(kind: device.effectiveKind, size: 56, isOnline: device.isOnline)
+        HStack(alignment: .top, spacing: 12) {
+            DeviceIcon(kind: device.effectiveKind, size: 52, isOnline: device.isOnline)
             VStack(alignment: .leading, spacing: 4) {
-                TextField("名称", text: $name, prompt: Text(device.displayName))
-                    .textFieldStyle(.plain)
-                    .font(.title3.weight(.semibold))
-                    .onSubmit { model.rename(device.id, to: name) }
-                Text([device.model, device.vendor].compactMap { $0 }.uniqued().joined(separator: " · ").nilIfEmpty ?? device.effectiveKind.title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                if isRenaming {
+                    TextField("名称", text: $name, prompt: Text(device.displayName))
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
+                        .font(.title3.weight(.semibold))
+                        .focused($nameFocused)
+                        .onSubmit(commitRename)
+                        .onExitCommand { isRenaming = false }
+                    Text("留空恢复自动识别的名称 · Esc 取消")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(device.displayName)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(device.hasRealName ? .primary : .secondary)
+                            .lineLimit(2)
+                            .onTapGesture(count: 2, perform: startRenaming)
+                        Button(action: startRenaming) {
+                            Image(systemName: "pencil")
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                        .help("重命名（也可在列表中按 Return）")
+                    }
+                    Text([device.model, device.vendor].compactMap { $0 }.uniqued().joined(separator: " · ").nilIfEmpty
+                         ?? device.effectiveKind.title)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
                 HStack(spacing: 6) {
                     if device.isOnline {
-                        Chip(text: device.latency.map { String(format: "在线 · %.0f ms", $0) } ?? "在线", color: .green,
+                        Chip(text: device.latency.map { "在线 · \(latencyString($0))" } ?? "在线", color: .green,
                              systemImage: "circle.fill")
                     } else {
                         Chip(text: "离线 · \(device.lastSeen.relativeText)", color: .secondary, systemImage: "moon.zzz.fill")
@@ -236,20 +284,39 @@ private struct DeviceDetail: View {
         .padding(.vertical, 4)
     }
 
+    private func startRenaming() {
+        name = device.customName ?? device.displayName
+        isRenaming = true
+        Task { @MainActor in nameFocused = true }
+    }
+
+    private func commitRename() {
+        isRenaming = false
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Leaving the suggested name untouched must not freeze it as a custom name.
+        if device.customName == nil && trimmed == device.displayName { return }
+        model.rename(device.id, to: trimmed)
+    }
+
     private var actions: some View {
         GlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
-                ActionButton(title: "网页", symbol: "safari") { DeviceActions.openWeb(device) }
-                    .disabled(device.ipv4 == nil)
-                ActionButton(title: "SSH", symbol: "terminal") { DeviceActions.openSSH(device) }
-                    .disabled(device.ipv4 == nil)
-                    .opacity(DeviceActions.hasSSH(device) ? 1 : 0.55)
-                ActionButton(title: "共享", symbol: "folder") { DeviceActions.openSMB(device) }
-                    .disabled(device.ipv4 == nil)
-                    .opacity(DeviceActions.hasSMB(device) ? 1 : 0.55)
-                ActionButton(title: "屏幕", symbol: "display") { DeviceActions.openVNC(device) }
-                    .disabled(device.ipv4 == nil)
-                    .opacity(DeviceActions.hasVNC(device) ? 1 : 0.55)
+                ActionButton(title: "网页", symbol: "safari", detected: DeviceActions.hasWeb(device)) {
+                    DeviceActions.openWeb(device)
+                }
+                .disabled(device.ipv4 == nil)
+                ActionButton(title: "SSH", symbol: "terminal", detected: DeviceActions.hasSSH(device)) {
+                    DeviceActions.openSSH(device)
+                }
+                .disabled(device.ipv4 == nil)
+                ActionButton(title: "共享", symbol: "folder", detected: DeviceActions.hasSMB(device)) {
+                    DeviceActions.openSMB(device)
+                }
+                .disabled(device.ipv4 == nil)
+                ActionButton(title: "屏幕", symbol: "display", detected: DeviceActions.hasVNC(device)) {
+                    DeviceActions.openVNC(device)
+                }
+                .disabled(device.ipv4 == nil)
                 ActionButton(title: "唤醒", symbol: "power") {
                     DeviceActions.wake(device, broadcast: model.interface?.broadcast)
                 }
@@ -259,9 +326,11 @@ private struct DeviceDetail: View {
     }
 }
 
+/// Every action stays usable (detection can miss a service); a green dot marks services that were seen.
 private struct ActionButton: View {
     let title: String
     let symbol: String
+    var detected = false
     let action: () -> Void
 
     var body: some View {
@@ -271,9 +340,14 @@ private struct ActionButton: View {
                 Text(title).font(.caption2)
             }
             .frame(maxWidth: .infinity, minHeight: 40)
+            .overlay(alignment: .topTrailing) {
+                if detected {
+                    Circle().fill(.green).frame(width: 6, height: 6).offset(x: -4, y: 2)
+                }
+            }
         }
         .buttonStyle(.glass)
-        .help(title)
+        .help(detected ? "\(title)（已检测到服务）" : title)
     }
 }
 
@@ -300,7 +374,11 @@ private struct ServiceRow: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(service.typeDescription)
+                    if service.isKnownType {
+                        Text(service.typeDescription)
+                    } else {
+                        Text(verbatim: service.type).font(.callout.monospaced()).foregroundStyle(.secondary)
+                    }
                     Text(service.name)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -308,7 +386,7 @@ private struct ServiceRow: View {
                 }
                 Spacer()
                 if service.port != 0 {
-                    Text(":\(service.port)")
+                    Text(verbatim: ":\(service.port)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }
@@ -324,7 +402,7 @@ private struct PortRow: View {
     var body: some View {
         let service = PortDatabase.shared.service(for: port)
         HStack {
-            Text("\(port)")
+            Text(verbatim: String(port))
                 .font(.body.monospacedDigit().weight(.medium))
                 .frame(width: 54, alignment: .leading)
             VStack(alignment: .leading, spacing: 1) {

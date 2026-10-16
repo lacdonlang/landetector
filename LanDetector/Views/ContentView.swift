@@ -24,13 +24,9 @@ struct ContentView: View {
         }
         .environment(\.textScale, model.textScale)
         .navigationTitle(model.interface?.displayName ?? "LanDetector")
-        .navigationSubtitle(subtitle)
-    }
-
-    private var subtitle: String {
-        guard let iface = model.interface else { return "" }
-        let range = model.selectedRange.map { " · 范围 \($0.title)" } ?? ""
-        return "\(iface.cidr) · 网关 \(iface.gateway?.description ?? "—")\(range)"
+        // Counts and scan state live here (like Mail's message count) instead of a header that would
+        // repeat the sidebar badges and eat vertical space in the list.
+        .navigationSubtitle(model.interface == nil ? "" : model.statusSummary)
     }
 }
 
@@ -74,17 +70,6 @@ struct MainToolbar: ToolbarContent {
             }
             .pickerStyle(.segmented)
             .help("切换列表 / 卡片视图")
-        }
-        ToolbarItem {
-            Menu {
-                ForEach(Exporter.Format.allCases) { format in
-                    Button(format.title) { Exporter.export(model.visibleDevices, as: format) }
-                }
-            } label: {
-                Label("导出", systemImage: "square.and.arrow.up")
-            }
-            .help("导出当前列表")
-            .disabled(model.devices.isEmpty)
         }
         ToolbarItem {
             Button {
@@ -141,17 +126,63 @@ struct InterfaceMenu: View {
     }
 }
 
-/// Header + table/grid, with empty states.
+/// Table/grid with a slim scan-progress bar and, only when needed, a warning banner.
 struct DeviceListContainer: View {
+    private let model = AppModel.shared
+
     var body: some View {
         DeviceListContent()
-            .safeAreaInset(edge: .top, spacing: 0) {
-                ContentHeader()
+            .overlay(alignment: .top) {
+                if model.isScanning { ScanProgressBar(progress: model.progress) }
             }
-            // Neither the list nor the header may report an ideal width: the split view sizes the
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if showsMACWarning { MACWarningBanner() }
+            }
+            // Neither the list nor anything above it may report an ideal width: the split view sizes the
             // detail column from it, and with the inspector open a narrowing window would otherwise
             // send AppKit into an endless update-constraints loop.
             .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .animation(.default, value: model.isScanning)
+    }
+
+    /// Several devices answered but none has a MAC: the build cannot read the ARP table.
+    private var showsMACWarning: Bool {
+        guard model.lastScan != nil else { return false }
+        let online = model.devices.filter(\.isOnline)
+        return online.count > 2 && !online.contains { $0.mac != nil && !$0.isCurrentDevice }
+    }
+}
+
+/// A 2-point accent bar along the top edge, like a browser's page-load indicator.
+private struct ScanProgressBar: View {
+    let progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            Capsule()
+                .fill(.tint)
+                .frame(width: max(8, geometry.size.width * progress), height: 2.5)
+                .animation(.easeOut(duration: 0.25), value: progress)
+        }
+        .frame(height: 2.5)
+        .allowsHitTesting(false)
+        .transition(.opacity)
+        .accessibilityElement()
+        .accessibilityLabel("扫描进度")
+        .accessibilityValue("\(Int(progress * 100))%")
+    }
+}
+
+private struct MACWarningBanner: View {
+    var body: some View {
+        Label("读不到 MAC 地址：macOS 27 只向 Developer ID 签名的应用开放 ARP 表，厂商识别和设备合并会受影响。",
+              systemImage: "exclamationmark.triangle.fill")
+            .font(.callout)
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.orange.opacity(0.12))
     }
 }
 
@@ -194,95 +225,3 @@ struct DeviceListContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-struct ContentHeader: View {
-    private let model = AppModel.shared
-
-    var body: some View {
-        let counts = model.counts
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                // A horizontal scroll view keeps the header from imposing a minimum width on the split view.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        StatTile(title: "在线设备", value: "\(counts.online)", symbol: "wifi", color: .green)
-                        StatTile(title: "已知设备", value: "\(counts.all)", symbol: "square.stack.3d.up", color: .blue)
-                        StatTile(title: "新设备", value: "\(counts.recent)", symbol: "sparkles", color: .orange)
-                        StatTile(title: scanTitle, value: scanValue,
-                                 symbol: model.isLive ? "dot.radiowaves.left.and.right" : "clock",
-                                 color: model.isLive ? .green : .purple)
-                    }
-                    .padding(.vertical, 2)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                if let ip = model.publicIP?.ipv4 {
-                    // Must stay compressible: a fixed minimum width here fights the inspector column
-                    // and sends AppKit into an update-constraints loop when the window narrows.
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("\(model.publicIP?.flag ?? "🌐") \(ip)")
-                            .font(.system(.callout, design: .monospaced))
-                            .textSelection(.enabled)
-                        Text(model.publicIP?.isp ?? "公网 IP")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(minWidth: 0, alignment: .trailing)
-                    .layoutPriority(-1)
-                    .help("公网地址\(model.publicIP?.locationText.map { " · \($0)" } ?? "")")
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .animation(.snappy, value: counts.online)
-
-            if model.isScanning {
-                HStack(spacing: 8) {
-                    ProgressView(value: model.progress)
-                        .progressViewStyle(.linear)
-                    Text(model.phase?.rawValue ?? "")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 64, alignment: .trailing)
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 6)
-                .transition(.opacity)
-            }
-            if showsMACWarning {
-                Label("无法读取 MAC 地址：macOS 27 仅向 Developer ID 签名的应用开放 ARP 表，设备合并与厂商识别会受影响。",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 6)
-            }
-        }
-        // The header must not report an ideal width: the split view sizes the detail column from it
-        // and, with the inspector open, a narrowing window then loops in update-constraints passes.
-        .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity)
-        .background(.bar)
-        .animation(.default, value: model.isScanning)
-    }
-
-    private var showsMACWarning: Bool {
-        guard model.lastScan != nil else { return false }
-        let online = model.devices.filter(\.isOnline)
-        return online.count > 2 && !online.contains { $0.mac != nil && !$0.isCurrentDevice }
-    }
-
-    private var scanTitle: String {
-        if model.isScanning { return "扫描中" }
-        let time = model.lastScanDate.map { " · \($0.formatted(date: .omitted, time: .shortened))" } ?? ""
-        return (model.isLive ? "实时监控" : "上次扫描") + time
-    }
-
-    private var scanValue: String {
-        if model.isScanning { return "\(Int(model.progress * 100))%" }
-        guard let d = model.lastScan?.duration else { return "—" }
-        return String(format: "%.1f 秒", d)
-    }
-}
-
