@@ -1,0 +1,504 @@
+ADP2,1	Developer Transition Kit	Mac Pro
+ADP3,1	Developer Transition Kit	Mac mini
+ADP3,2	Developer Transition Kit	Mac mini
+AirPort10,115	AirPort Express 802.11n (2nd generation)	AirPort
+AirPort4,102	AirPort Express 802.11g	AirPort
+AirPort4,107	AirPort Express 802.11n (1st generation)	AirPort
+AirPort5,104	AirPort Extreme (1st generation)	AirPort
+AirPort5,105	AirPort Extreme (2nd generation)	AirPort
+AirPort5,108	AirPort Extreme (3rd generation)	AirPort
+AirPort5,114	AirPort Extreme (4th generation)	AirPort
+AirPort5,117	AirPort Extreme (5th generation)	AirPort
+AirPort7,120	AirPort Extreme (6th generation)	AirPort
+AppleDisplay18,1	Studio Display XDR	Display
+AppleDisplay18,2	Studio Display (2026)	Display
+AppleDisplay2,1	Studio Display	Display
+AppleTV1,1	Apple TV (1st generation)	Apple TV
+AppleTV11,1	Apple TV 4K (2nd generation)	Apple TV
+AppleTV14,1	Apple TV 4K (3rd generation) Wi-Fi	Apple TV
+AppleTV14,4	Unreleased Apple TV	Apple TV
+AppleTV14,5	Unreleased Apple TV	Apple TV
+AppleTV18,1	Apple TV 4K (4th generation)	Apple TV
+AppleTV2,1	Apple TV (2nd generation)	Apple TV
+AppleTV3,1	Apple TV (3rd generation)	Apple TV
+AppleTV3,2	Apple TV (3rd generation, Rev A)	Apple TV
+AppleTV5,3	Apple TV HD (4th generation)	Apple TV
+AppleTV6,2	Apple TV 4K (1st generation)	Apple TV
+AudioAccessory1,1	HomePod (1st generation)	HomePod
+AudioAccessory1,2	HomePod (1st generation, Unknown Model)	HomePod
+AudioAccessory11,1	HomePod mini 2	HomePod
+AudioAccessory5,1	HomePod mini	HomePod
+AudioAccessory6,1	HomePod (2nd generation)	HomePod
+AudioAccessorySingle5,1	HomePod mini	HomePod
+ComputeModule13,1	Private Cloud Compute Node (M1)	Compute Module
+ComputeModule13,2	Private Cloud Compute Node (M1)	Compute Module
+ComputeModule13,3	Private Cloud Compute Node (M1)	Compute Module
+ComputeModule13,5	Private Cloud Compute Baseboard Management Controller	Compute Module
+ComputeModule14,1	Private Cloud Compute Node (M2 Ultra)	Compute Module
+ComputeModule14,2	Apple PCC Research Environment Virtual Machine 1	Virtual Machine
+ComputeModule17,2	Private Cloud Compute Node (M5)	Compute Module
+Mac13,1	Mac Studio (M1 Max)	Mac Studio
+Mac13,2	Mac Studio (M1 Ultra)	Mac Studio
+Mac14,10	MacBook Pro (16-inch, M2 Pro, 2023)	MacBook Pro
+Mac14,12	Mac mini (M2 Pro, 2023)	Mac mini
+Mac14,13	Mac Studio (M2 Max, 2023)	Mac Studio
+Mac14,14	Mac Studio (M2 Ultra, 2023)	Mac Studio
+Mac14,15	MacBook Air (15-inch, M2, 2023)	MacBook Air
+Mac14,2	MacBook Air (M2, 2022)	MacBook Air
+Mac14,3	Mac mini (M2, 2023)	Mac mini
+Mac14,5	MacBook Pro (14-inch, M2 Max, 2023)	MacBook Pro
+Mac14,6	MacBook Pro (16-inch, M2 Max, 2023)	MacBook Pro
+Mac14,7	MacBook Pro (13-inch, M2, 2022)	MacBook Pro
+Mac14,8	Mac Pro (2023)	Mac Pro
+Mac14,9	MacBook Pro (14-inch, M2 Pro, 2023)	MacBook Pro
+Mac15,1	Unreleased MacBook Air	MacBook Air
+Mac15,10	MacBook Pro (14-inch, 14-core M3 Max, Nov 2023)	MacBook Pro
+Mac15,11	MacBook Pro (16-inch, 14-core M3 Max, Nov 2023)	MacBook Pro
+Mac15,12	MacBook Air (13-inch, M3, 2024)	MacBook Air
+Mac15,13	MacBook Air (15-inch, M3, 2024)	MacBook Air
+Mac15,14	Mac Studio (M3 Ultra, 2025)	Mac Studio
+Mac15,2	Unreleased MacBook Air	MacBook Air
+Mac15,3	MacBook Pro (14-inch, M3, Nov 2023)	MacBook Pro
+Mac15,4	iMac (24-inch, M3, 2023, Two Ports)	iMac
+Mac15,5	iMac (24-inch, M3, 2023, Four Ports)	iMac
+Mac15,6	MacBook Pro (14-inch, M3 Pro, Nov 2023)	MacBook Pro
+Mac15,7	MacBook Pro (16-inch, M3 Pro, Nov 2023)	MacBook Pro
+Mac15,8	MacBook Pro (14-inch, 16-core M3 Max, Nov 2023)	MacBook Pro
+Mac15,9	MacBook Pro (16-inch, 16-core M3 Max, Nov 2023)	MacBook Pro
+Mac16,1	MacBook Pro (14-inch, M4, Nov 2024)	MacBook Pro
+Mac16,10	Mac mini (M4, 2024)	Mac mini
+Mac16,11	Mac mini (M4 Pro, 2024)	Mac mini
+Mac16,12	MacBook Air (13-inch, M4, 2025)	MacBook Air
+Mac16,13	MacBook Air (15-inch, M4, 2025)	MacBook Air
+Mac16,2	iMac (24-inch, M4, 2024, Two Ports)	iMac
+Mac16,3	iMac (24-inch, M4, 2024, Four Ports)	iMac
+Mac16,5	MacBook Pro (16-inch, M4 Max, Nov 2024)	MacBook Pro
+Mac16,6	MacBook Pro (14-inch, M4 Max, Nov 2024)	MacBook Pro
+Mac16,7	MacBook Pro (16-inch, M4 Pro, Nov 2024)	MacBook Pro
+Mac16,8	MacBook Pro (14-inch, M4 Pro, Nov 2024)	MacBook Pro
+Mac16,9	Mac Studio (M4 Max, 2025)	Mac Studio
+Mac17,14	Mac Studio (M5 Max)	Mac Studio
+Mac17,15	Mac Studio (M5 Ultra)	Mac Studio
+Mac17,16	Mac mini (M5 Pro)	Mac mini
+Mac17,2	MacBook Pro 14-inch (M5)	MacBook Pro
+Mac17,3	MacBook Air (13-inch, M5)	MacBook Air
+Mac17,4	MacBook Air (15-inch, M5)	MacBook Air
+Mac17,5	MacBook Neo	MacBook Neo
+Mac17,6	MacBook Pro (16-inch, M5 Max)	MacBook Pro
+Mac17,7	MacBook Pro (14-inch, M5 Max)	MacBook Pro
+Mac17,8	MacBook Pro (16-inch, M5 Pro)	MacBook Pro
+Mac17,9	MacBook Pro (14-inch, M5 Pro)	MacBook Pro
+Mac18,5	Mac mini (M6)	Mac mini
+MacBook1,1	MacBook (13-inch, Mid 2006)	MacBook
+MacBook10,1	MacBook (Retina, 12-inch, 2017)	MacBook
+MacBook2,1	MacBook (13-inch, Mid 2007)	MacBook
+MacBook3,1	MacBook (13-inch, Late 2007)	MacBook
+MacBook4,1	MacBook (13-inch, Late 2008)	MacBook
+MacBook5,1	MacBook (13-inch, Aluminum, Late 2008)	MacBook
+MacBook5,2	MacBook (13-inch, Mid 2009)	MacBook
+MacBook6,1	MacBook (13-inch, Late 2009)	MacBook
+MacBook7,1	MacBook (13-inch, Mid 2010)	MacBook
+MacBook8,1	MacBook (Retina, 12-inch, Early 2015)	MacBook
+MacBook9,1	MacBook (Retina, 12-inch, Early 2016)	MacBook
+MacBookAir1,1	MacBook Air (Early 2008)	MacBook Air
+MacBookAir10,1	MacBook Air (M1, 2020)	MacBook Air
+MacBookAir2,1	MacBook Air (Mid 2009)	MacBook Air
+MacBookAir3,1	MacBook Air (11-inch, Late 2010)	MacBook Air
+MacBookAir3,2	MacBook Air (13-inch, Late 2010)	MacBook Air
+MacBookAir4,1	MacBook Air (11-inch, Mid 2011)	MacBook Air
+MacBookAir4,2	MacBook Air (13-inch, Mid 2011)	MacBook Air
+MacBookAir5,1	MacBook Air (11-inch, Mid 2012)	MacBook Air
+MacBookAir5,2	MacBook Air (13-inch, Mid 2012)	MacBook Air
+MacBookAir6,1	MacBook Air (11-inch, Mid 2013)	MacBook Air
+MacBookAir6,2	MacBook Air (13-inch, Mid 2013)	MacBook Air
+MacBookAir7,1	MacBook Air (11-inch, Early 2015)	MacBook Air
+MacBookAir7,2	MacBook Air (13-inch, 2017)	MacBook Air
+MacBookAir8,1	MacBook Air (Retina, 13-inch, 2018)	MacBook Air
+MacBookAir8,2	MacBook Air (Retina, 13-inch, 2019)	MacBook Air
+MacBookAir9,1	MacBook Air (Retina, 13-inch, 2020)	MacBook Air
+MacBookPro1,1	MacBook Pro (15-inch, Early 2006)	MacBook Pro
+MacBookPro1,2	MacBook Pro (17-inch, Early 2006)	MacBook Pro
+MacBookPro10,1	MacBook Pro (Retina, 15-inch, Mid 2012)	MacBook Pro
+MacBookPro10,2	MacBook Pro (Retina, 13-inch, Late 2012)	MacBook Pro
+MacBookPro11,1	MacBook Pro (Retina, 13-inch, Mid 2014)	MacBook Pro
+MacBookPro11,2	MacBook Pro (Retina, 15-inch, Mid 2014, Integrated graphics)	MacBook Pro
+MacBookPro11,3	MacBook Pro (Retina, 15-inch, Mid 2014, Dedicated graphics)	MacBook Pro
+MacBookPro11,4	MacBook Pro (Retina, 15-inch, Mid 2015, Integrated graphics)	MacBook Pro
+MacBookPro11,5	MacBook Pro (Retina, 15-inch, Mid 2015, Dedicated graphics)	MacBook Pro
+MacBookPro12,1	MacBook Pro (Retina, 13-inch, Early 2015)	MacBook Pro
+MacBookPro13,1	MacBook Pro (13-inch, 2016, Two Thunderbolt 3 ports)	MacBook Pro
+MacBookPro13,2	MacBook Pro (13-inch, 2016, Four Thunderbolt 3 ports)	MacBook Pro
+MacBookPro13,3	MacBook Pro (15-inch, 2016)	MacBook Pro
+MacBookPro14,1	MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)	MacBook Pro
+MacBookPro14,2	MacBook Pro (13-inch, 2017, Four Thunderbolt 3 ports)	MacBook Pro
+MacBookPro14,3	MacBook Pro (15-inch, 2017)	MacBook Pro
+MacBookPro15,1	MacBook Pro (15-inch, 2019)	MacBook Pro
+MacBookPro15,2	MacBook Pro (13-inch, 2018)	MacBook Pro
+MacBookPro15,3	MacBook Pro (15-inch, 2019, Radeon Pro Vega Graphics)	MacBook Pro
+MacBookPro15,4	MacBook Pro (13-inch, 2019, Two Thunderbolt 3 ports)	MacBook Pro
+MacBookPro16,1	MacBook Pro (16-inch, 2019)	MacBook Pro
+MacBookPro16,2	MacBook Pro (13-inch, 2020, Four Thunderbolt 3 ports)	MacBook Pro
+MacBookPro16,3	MacBook Pro (13-inch, 2020, Two Thunderbolt 3 ports)	MacBook Pro
+MacBookPro16,4	MacBook Pro (16-inch, 2019, Radeon Pro 5600M Graphics)	MacBook Pro
+MacBookPro17,1	MacBook Pro (13-inch, M1, 2020)	MacBook Pro
+MacBookPro18,1	MacBook Pro (16-inch, M1 Pro, 2021)	MacBook Pro
+MacBookPro18,2	MacBook Pro (16-inch, M1 Max, 2021)	MacBook Pro
+MacBookPro18,3	MacBook Pro (14-inch, M1 Pro, 2021)	MacBook Pro
+MacBookPro18,4	MacBook Pro (14-inch, M1 Max, 2021)	MacBook Pro
+MacBookPro2,1	MacBook Pro (17-inch, Late 2006)	MacBook Pro
+MacBookPro2,2	MacBook Pro (15-inch, Late 2006)	MacBook Pro
+MacBookPro3,1	MacBook Pro (15-inch, Mid 2007)	MacBook Pro
+MacBookPro4,1	MacBook Pro (15-inch, Early 2008)	MacBook Pro
+MacBookPro5,1	MacBook Pro (15-inch, Late 2008)	MacBook Pro
+MacBookPro5,2	MacBook Pro (17-inch, Mid 2009)	MacBook Pro
+MacBookPro5,3	MacBook Pro (15-inch, Mid 2009, Dedicated Graphics)	MacBook Pro
+MacBookPro5,4	MacBook Pro (15-inch, Mid 2009, Integrated Graphics)	MacBook Pro
+MacBookPro5,5	MacBook Pro (13-inch, Mid 2009)	MacBook Pro
+MacBookPro6,1	MacBook Pro (17-inch, Mid 2010)	MacBook Pro
+MacBookPro6,2	MacBook Pro (15-inch, Mid 2010)	MacBook Pro
+MacBookPro7,1	MacBook Pro (13-inch, Mid 2010)	MacBook Pro
+MacBookPro8,1	MacBook Pro (13-inch, Late 2011)	MacBook Pro
+MacBookPro8,2	MacBook Pro (15-inch, Late 2011)	MacBook Pro
+MacBookPro8,3	MacBook Pro (17-inch, Late 2011)	MacBook Pro
+MacBookPro9,1	MacBook Pro (15-inch, Mid 2012)	MacBook Pro
+MacBookPro9,2	MacBook Pro (13-inch, Mid 2012)	MacBook Pro
+MacPro1,1	Mac Pro (Mid 2006)	Mac Pro
+MacPro2,1	Mac Pro (Early 2007)	Mac Pro
+MacPro3,1	Mac Pro (Early 2008)	Mac Pro
+MacPro4,1	Mac Pro (Early 2009)	Mac Pro
+MacPro5,1	Mac Pro (Mid 2012)	Mac Pro
+MacPro6,1	Mac Pro (Late 2013)	Mac Pro
+MacPro7,1	Mac Pro (2019)	Mac Pro
+Macmini1,1	Mac mini (Late 2006)	Mac mini
+Macmini10,1	Unreleased Mac mini (M1 Pro)	Mac mini
+Macmini10,2	Unreleased Mac mini (M1 Max)	Mac mini
+Macmini2,1	Mac mini (Mid 2007)	Mac mini
+Macmini3,1	Mac mini (Late 2009)	Mac mini
+Macmini4,1	Mac mini (Mid 2010)	Mac mini
+Macmini5,1	Mac mini (Mid 2011, Integrated graphics)	Mac mini
+Macmini5,2	Mac mini (Mid 2011, Dedicated graphics)	Mac mini
+Macmini5,3	Mac mini (Mid 2011, Server)	Mac mini
+Macmini6,1	Mac mini (Late 2012, Core i5)	Mac mini
+Macmini6,2	Mac mini Server (Late 2012)	Mac mini
+Macmini6,3	Unreleased Mac mini	Mac mini
+Macmini7,1	Mac mini (Late 2014)	Mac mini
+Macmini7,2	Unreleased Mac mini	Mac mini
+Macmini7,3	Unreleased Mac mini	Mac mini
+Macmini8,1	Mac mini (Late 2018)	Mac mini
+Macmini8,2	Unreleased Mac mini	Mac mini
+Macmini9,1	Mac mini (M1, Late 2020)	Mac mini
+PowerMac10,1	Mac mini (Early 2005)	Mac mini
+PowerMac10,2	Mac mini (Late 2005)	Mac mini
+PowerMac12,1	iMac G5 (17-inch, iSight)	iMac
+PowerMac2,1	iMac (Slot Loading)	iMac
+PowerMac2,2	iMac (Summer 2000)	iMac
+PowerMac4,1	iMac (Early 2001)	iMac
+PowerMac4,2	iMac (Flat Panel)	iMac
+PowerMac4,5	iMac (17-inch Flat Panel)	iMac
+PowerMac6,1	iMac (17-inch)	iMac
+PowerMac6,3	iMac (15-inch USB 2.0)	iMac
+PowerMac8,1	iMac G5 (17-inch)	iMac
+PowerMac8,2	iMac G5 (17-inch, ALS)	iMac
+RackMac1,1	Xserve	Xserve
+RackMac1,2	Xserve (Slot Load)	Xserve
+RackMac3,1	Xserve G5	Xserve
+RealityDevice14,1	Vision Pro	Headset
+RealityDevice17,1	Vision Pro (M5)	Headset
+TimeCapsule6,106	AirPort Time Capsule (1st generation)	AirPort
+TimeCapsule6,109	AirPort Time Capsule (2nd generation)	AirPort
+TimeCapsule6,113	AirPort Time Capsule (3rd generation)	AirPort
+TimeCapsule6,116	AirPort Time Capsule (4th generation)	AirPort
+TimeCapsule8,119	AirPort Time Capsule (5th generation)	AirPort
+VirtualMac1,1	Apple Virtual Machine	Virtual Machine
+VirtualMac2,1	Apple Virtual Machine 1	Virtual Machine
+VirtualMac2,3	Apple Virtual Machine 3	Virtual Machine
+Watch1,1	Apple Watch (1st generation) (38mm)	Apple Watch
+Watch1,2	Apple Watch (1st generation) (42mm)	Apple Watch
+Watch2,1	Unreleased Apple Watch Series 2 (Cellular, 38mm)	Apple Watch
+Watch2,2	Unreleased Apple Watch Series 2 (Cellular, 42mm)	Apple Watch
+Watch2,3	Apple Watch Series 2 (38mm)	Apple Watch
+Watch2,4	Apple Watch Series 2 (42mm)	Apple Watch
+Watch2,6	Apple Watch Series 1 (38mm)	Apple Watch
+Watch2,7	Apple Watch Series 1 (42mm)	Apple Watch
+Watch3,1	Apple Watch Series 3 (GPS + Cellular, 38mm)	Apple Watch
+Watch3,2	Apple Watch Series 3 (GPS + Cellular, 42mm)	Apple Watch
+Watch3,3	Apple Watch Series 3 (GPS, 38mm)	Apple Watch
+Watch3,4	Apple Watch Series 3 (GPS, 42mm)	Apple Watch
+Watch4,1	Apple Watch Series 4 (GPS, 40mm)	Apple Watch
+Watch4,2	Apple Watch Series 4 (GPS, 44mm)	Apple Watch
+Watch4,3	Apple Watch Series 4 (GPS + Cellular, 40mm)	Apple Watch
+Watch4,4	Apple Watch Series 4 (GPS + Cellular, 44mm)	Apple Watch
+Watch5,1	Apple Watch Series 5 (GPS, 40mm)	Apple Watch
+Watch5,10	Apple Watch SE (1st generation, GPS, 44mm)	Apple Watch
+Watch5,11	Apple Watch SE (1st generation, GPS + Cellular, 44mm)	Apple Watch
+Watch5,12	Apple Watch SE (1st generation, GPS + Cellular, 44mm)	Apple Watch
+Watch5,2	Apple Watch Series 5 (GPS, 44mm)	Apple Watch
+Watch5,3	Apple Watch Series 5 (GPS + Cellular, 40mm)	Apple Watch
+Watch5,4	Apple Watch Series 5 (GPS + Cellular, 44mm)	Apple Watch
+Watch5,9	Apple Watch SE (1st generation, GPS, 40mm)	Apple Watch
+Watch6,1	Apple Watch Series 6 (GPS, 40mm)	Apple Watch
+Watch6,10	Apple Watch SE (2nd generation, GPS, 40mm)	Apple Watch
+Watch6,11	Apple Watch SE (2nd generation, GPS, 44mm)	Apple Watch
+Watch6,12	Apple Watch SE (2nd generation, GPS + Cellular, 40mm)	Apple Watch
+Watch6,13	Apple Watch SE (2nd generation, GPS + Cellular, 44mm)	Apple Watch
+Watch6,14	Apple Watch Series 8 (GPS, 41mm)	Apple Watch
+Watch6,15	Apple Watch Series 8 (GPS, 45mm)	Apple Watch
+Watch6,16	Apple Watch Series 8 (GPS + Cellular, 41mm)	Apple Watch
+Watch6,17	Apple Watch Series 8 (GPS + Cellular, 45mm)	Apple Watch
+Watch6,18	Apple Watch Ultra	Apple Watch
+Watch6,2	Apple Watch Series 6 (GPS, 44mm)	Apple Watch
+Watch6,3	Apple Watch Series 6 (GPS + Cellular, 40mm)	Apple Watch
+Watch6,4	Apple Watch Series 6 (GPS + Cellular, 44mm)	Apple Watch
+Watch6,6	Apple Watch Series 7 (GPS, 41mm)	Apple Watch
+Watch6,7	Apple Watch Series 7 (GPS, 45mm)	Apple Watch
+Watch6,8	Apple Watch Series 7 (GPS + Cellular, 41mm)	Apple Watch
+Watch6,9	Apple Watch Series 7 (GPS + Cellular, 45mm)	Apple Watch
+Watch7,1	Apple Watch Series 9 (GPS, 41mm)	Apple Watch
+Watch7,10	Apple Watch Series 10 (GPS + Cellular, 42mm)	Apple Watch
+Watch7,11	Apple Watch Series 10 (GPS + Cellular, 46mm)	Apple Watch
+Watch7,12	Apple Watch Ultra 3	Apple Watch
+Watch7,13	Apple Watch SE 3 (GPS, 40mm)	Apple Watch
+Watch7,14	Apple Watch SE 3 (GPS, 44mm)	Apple Watch
+Watch7,15	Apple Watch SE 3 (GPS + Cellular, 40mm)	Apple Watch
+Watch7,16	Apple Watch SE 3 (GPS + Cellular, 44mm)	Apple Watch
+Watch7,17	Apple Watch Series 11 (GPS, 42mm)	Apple Watch
+Watch7,18	Apple Watch Series 11 (GPS, 46mm)	Apple Watch
+Watch7,19	Apple Watch Series 11 (GPS + Cellular, 42mm)	Apple Watch
+Watch7,2	Apple Watch Series 9 (GPS, 45mm)	Apple Watch
+Watch7,20	Apple Watch Series 11 (GPS + Cellular, 46mm)	Apple Watch
+Watch7,3	Apple Watch Series 9 (GPS + Cellular, 41mm)	Apple Watch
+Watch7,4	Apple Watch Series 9 (GPS + Cellular, 45mm)	Apple Watch
+Watch7,5	Apple Watch Ultra 2	Apple Watch
+Watch7,8	Apple Watch Series 10 (GPS, 42mm)	Apple Watch
+Watch7,9	Apple Watch Series 10 (GPS, 46mm)	Apple Watch
+Watch8,1	Apple Watch Ultra 4	Apple Watch
+Watch8,2	Apple Watch Series 12 (GPS, 42mm)	Apple Watch
+Watch8,3	Apple Watch Series 12 (GPS, 46mm)	Apple Watch
+Watch8,4	Apple Watch Series 12 (GPS + Cellular, 42mm)	Apple Watch
+Watch8,5	Apple Watch Series 12 (GPS + Cellular, 46mm)	Apple Watch
+Xserve1,1	Xserve (Late 2006)	Xserve
+Xserve2,1	Xserve (Early 2008)	Xserve
+Xserve3,1	Xserve (Early 2009)	Xserve
+iMac,1	iMac (1999)	iMac
+iMac10,1	iMac (21.5-inch, Late 2009)	iMac
+iMac11,1	iMac (27-inch, Late 2009, Core i5/i7)	iMac
+iMac11,2	iMac (21.5-inch, Mid 2010)	iMac
+iMac11,3	iMac (27-inch, Mid 2010)	iMac
+iMac12,1	iMac (21.5-inch, Mid 2011)	iMac
+iMac12,2	iMac (27-inch, Mid 2011)	iMac
+iMac13,1	iMac (21.5-inch, Late 2012)	iMac
+iMac13,2	iMac (27-inch, Late 2012)	iMac
+iMac13,3	iMac (21.5-inch, Early 2013)	iMac
+iMac14,1	iMac (21.5-inch, Late 2013, Integrated Graphics)	iMac
+iMac14,2	iMac (27-inch, Late 2013)	iMac
+iMac14,3	iMac (21.5-inch, Late 2013, Dedicated Graphics)	iMac
+iMac14,4	iMac (21.5-inch, Mid 2014)	iMac
+iMac15,1	iMac (Retina 5K, 27-inch, Mid 2015)	iMac
+iMac16,1	iMac (21.5-inch, Late 2015)	iMac
+iMac16,2	iMac (21.5-inch, Late 2015)	iMac
+iMac17,1	iMac (Retina 5K, 27-inch, Late 2015)	iMac
+iMac18,1	iMac (21.5-inch, 2017)	iMac
+iMac18,2	iMac (Retina 4K, 21.5-inch, 2017)	iMac
+iMac18,3	iMac (Retina 5K, 27-inch, 2017)	iMac
+iMac19,1	iMac (Retina 5K, 27-inch, 2019)	iMac
+iMac19,2	iMac (Retina 4K, 21.5-inch, 2019)	iMac
+iMac20,1	iMac (Retina 5K, 27-inch, 2020)	iMac
+iMac20,2	iMac (Retina 5K, 27-inch, 2020, RX 5700/XT)	iMac
+iMac21,1	iMac (24-inch, M1, 2021, Four Ports)	iMac
+iMac21,2	iMac (24-inch, M1, 2021, Two Ports)	iMac
+iMac4,1	iMac (17-inch, Early 2006)	iMac
+iMac4,2	iMac (17-inch, Mid 2006)	iMac
+iMac5,1	iMac (20-inch, Late 2006)	iMac
+iMac5,2	iMac (17-inch, Late 2006, Integrated Graphics)	iMac
+iMac6,1	iMac (24-inch, Late 2006)	iMac
+iMac7,1	iMac (20-inch, Mid 2007)	iMac
+iMac8,1	iMac (20-inch, Early 2008)	iMac
+iMac9,1	iMac (20-inch, Mid 2009)	iMac
+iMacPro1,1	iMac Pro (Retina 5K, 27-inch, Late 2017)	iMac
+iPad1,1	iPad	iPad
+iPad11,1	iPad mini (5th generation) Wi-Fi	iPad mini
+iPad11,2	iPad mini (5th generation) Wi-Fi + Cellular	iPad mini
+iPad11,3	iPad Air (3rd generation) Wi-Fi	iPad Air
+iPad11,4	iPad Air (3rd generation) Wi-Fi + Cellular	iPad Air
+iPad11,6	iPad (8th generation) Wi-Fi	iPad
+iPad11,7	iPad (8th generation) Wi-Fi + Cellular	iPad
+iPad12,1	iPad (9th generation) Wi-Fi	iPad
+iPad12,2	iPad (9th generation) Wi-Fi + Cellular	iPad
+iPad13,1	iPad Air (4th generation) Wi-Fi	iPad Air
+iPad13,10	iPad Pro 12.9-inch (5th generation) Wi-Fi + Cellular	iPad Pro
+iPad13,11	iPad Pro 12.9-inch (5th generation) Wi-Fi + Cellular (1 or 2 TB)	iPad Pro
+iPad13,16	iPad Air (5th generation) Wi-Fi	iPad Air
+iPad13,17	iPad Air (5th generation) Wi-Fi + Cellular	iPad Air
+iPad13,18	iPad (10th generation) Wi-Fi	iPad
+iPad13,19	iPad (10th generation) Wi-Fi + Cellular	iPad
+iPad13,2	iPad Air (4th generation) Wi-Fi + Cellular	iPad Air
+iPad13,20	Unreleased iPad	iPad
+iPad13,21	Unreleased iPad	iPad
+iPad13,4	iPad Pro 11-inch (3rd generation) Wi-Fi	iPad Pro
+iPad13,5	iPad Pro 11-inch (3rd generation) Wi-Fi (1 or 2 TB)	iPad Pro
+iPad13,6	iPad Pro 11-inch (3rd generation) Wi-Fi + Cellular	iPad Pro
+iPad13,7	iPad Pro 11-inch (3rd generation) Wi-Fi + Cellular (1 or 2 TB)	iPad Pro
+iPad13,8	iPad Pro 12.9-inch (5th generation) Wi-Fi	iPad Pro
+iPad13,9	iPad Pro 12.9-inch (5th generation) Wi-Fi (1 or 2 TB)	iPad Pro
+iPad14,1	iPad mini (6th generation) Wi-Fi	iPad mini
+iPad14,10	iPad Air 13-inch (M2) Wi-Fi	iPad Air
+iPad14,11	iPad Air 13-inch (M2) Wi-Fi + Cellular	iPad Air
+iPad14,2	iPad mini (6th generation) Wi-Fi + Cellular	iPad mini
+iPad14,3	iPad Pro 11-inch (4th generation) Wi-Fi	iPad Pro
+iPad14,4	iPad Pro 11-inch (4th generation) Wi-Fi + Cellular	iPad Pro
+iPad14,5	iPad Pro 12.9-inch (6th generation) Wi-Fi	iPad Pro
+iPad14,6	iPad Pro 12.9-inch (6th generation) Wi-Fi + Cellular	iPad Pro
+iPad14,8	iPad Air 11-inch (M2) Wi-Fi	iPad Air
+iPad14,9	iPad Air 11-inch (M2) Wi-Fi + Cellular	iPad Air
+iPad15,3	iPad Air 11-inch (M3) Wi-Fi	iPad Air
+iPad15,4	iPad Air 11-inch (M3) Wi-Fi + Cellular	iPad Air
+iPad15,5	iPad Air 13-inch (M3) Wi-Fi	iPad Air
+iPad15,6	iPad Air 13-inch (M3) Wi-Fi + Cellular	iPad Air
+iPad15,7	iPad (A16) Wi-Fi	iPad
+iPad15,8	iPad (A16) Wi-Fi + Cellular	iPad
+iPad16,1	iPad mini (A17 Pro) Wi-Fi	iPad mini
+iPad16,10	iPad Air 13-inch (M4) Wi-Fi	iPad Air
+iPad16,11	iPad Air 13-inch (M4) Wi-Fi + Cellular	iPad Air
+iPad16,2	iPad mini (A17 Pro) Wi-Fi + Cellular	iPad mini
+iPad16,3	iPad Pro 11-inch (M4) Wi-Fi	iPad Pro
+iPad16,4	iPad Pro 11-inch (M4) Wi-Fi + Cellular	iPad Pro
+iPad16,5	iPad Pro 13-inch (M4) Wi-Fi	iPad Pro
+iPad16,6	iPad Pro 13-inch (M4) Wi-Fi + Cellular	iPad Pro
+iPad16,8	iPad Air 11-inch (M4) Wi-Fi	iPad Air
+iPad16,9	iPad Air 11-inch (M4) Wi-Fi + Cellular	iPad Air
+iPad17,1	iPad Pro 11-inch Wi-Fi (M5)	iPad Pro
+iPad17,2	iPad Pro 11-inch Wi-Fi + Cellular (M5)	iPad Pro
+iPad17,3	iPad Pro 13-inch Wi-Fi (M5)	iPad Pro
+iPad17,4	iPad Pro 13-inch Wi-Fi + Cellular (M5)	iPad Pro
+iPad2,1	iPad 2 Wi-Fi	iPad
+iPad2,2	iPad 2 Wi-Fi + 3G (GSM)	iPad
+iPad2,3	iPad 2 Wi-Fi + 3G (CDMA)	iPad
+iPad2,4	iPad 2 Wi-Fi (Mid 2012)	iPad
+iPad2,5	iPad mini Wi-Fi	iPad mini
+iPad2,6	iPad mini Wi-Fi + Cellular	iPad mini
+iPad2,7	iPad mini Wi-Fi + Cellular (MM)	iPad mini
+iPad3,1	iPad (3rd generation) Wi-Fi	iPad
+iPad3,2	iPad (3rd generation) Wi-Fi + Cellular (VZ)	iPad
+iPad3,3	iPad (3rd generation) Wi-Fi + Cellular	iPad
+iPad3,4	iPad (4th generation) Wi-Fi	iPad
+iPad3,5	iPad (4th generation) Wi-Fi + Cellular	iPad
+iPad3,6	iPad (4th generation) Wi-Fi + Cellular (MM)	iPad
+iPad4,1	iPad Air Wi-Fi	iPad Air
+iPad4,2	iPad Air Wi-Fi + Cellular	iPad Air
+iPad4,3	iPad Air Wi-Fi + Cellular (TD-LTE)	iPad Air
+iPad4,4	iPad mini 2 Wi-Fi	iPad mini
+iPad4,5	iPad mini 2 Wi-Fi + Cellular	iPad mini
+iPad4,6	iPad mini 2 Wi-Fi + Cellular (TD-LTE)	iPad mini
+iPad4,7	iPad mini 3 Wi-Fi	iPad mini
+iPad4,8	iPad mini 3 Wi-Fi + Cellular	iPad mini
+iPad4,9	iPad mini 3 Wi-Fi + Cellular (TD-LTE)	iPad mini
+iPad5,1	iPad mini 4 Wi-Fi	iPad mini
+iPad5,2	iPad mini 4 Wi-Fi + Cellular	iPad mini
+iPad5,3	iPad Air 2 Wi-Fi	iPad Air
+iPad5,4	iPad Air 2 Wi-Fi + Cellular	iPad Air
+iPad5,5	Unreleased iPad Pro	iPad Pro
+iPad5,6	Unreleased iPad Pro	iPad Pro
+iPad6,1	Unreleased iPad mini	iPad mini
+iPad6,11	iPad (5th generation) Wi-Fi	iPad
+iPad6,12	iPad (5th generation) Wi-Fi + Cellular	iPad
+iPad6,2	Unreleased iPad mini	iPad mini
+iPad6,3	iPad Pro (9.7-inch) Wi-Fi	iPad Pro
+iPad6,4	iPad Pro (9.7-inch) Wi-Fi + Cellular	iPad Pro
+iPad6,7	iPad Pro (12.9-inch) (1st generation) Wi-Fi	iPad Pro
+iPad6,8	iPad Pro (12.9-inch) (1st generation) Wi-Fi + Cellular	iPad Pro
+iPad7,1	iPad Pro (12.9-inch) (2nd generation) Wi-Fi	iPad Pro
+iPad7,11	iPad (7th generation) Wi-Fi	iPad
+iPad7,12	iPad (7th generation) Wi-Fi + Cellular	iPad
+iPad7,2	iPad Pro (12.9-inch) (2nd generation) Wi-Fi + Cellular	iPad Pro
+iPad7,3	iPad Pro (10.5-inch) Wi-Fi	iPad Pro
+iPad7,4	iPad Pro (10.5-inch) Wi-Fi + Cellular	iPad Pro
+iPad7,5	iPad (6th generation) Wi-Fi	iPad
+iPad7,6	iPad (6th generation) Wi-Fi + Cellular	iPad
+iPad8,1	iPad Pro 11-inch (1st generation) Wi-Fi	iPad Pro
+iPad8,10	iPad Pro 11-inch (2nd generation) Wi-Fi + Cellular	iPad Pro
+iPad8,11	iPad Pro 12.9-inch (4th generation) Wi-Fi	iPad Pro
+iPad8,12	iPad Pro 12.9-inch (4th generation) Wi-Fi + Cellular	iPad Pro
+iPad8,2	iPad Pro 11-inch (1st generation) Wi-Fi (1TB)	iPad Pro
+iPad8,3	iPad Pro 11-inch (1st generation) Wi-Fi + Cellular	iPad Pro
+iPad8,4	iPad Pro 11-inch (1st generation) Wi-Fi + Cellular (1TB)	iPad Pro
+iPad8,5	iPad Pro 12.9-inch (3rd generation) Wi-Fi	iPad Pro
+iPad8,6	iPad Pro 12.9-inch (3rd generation) Wi-Fi (1TB)	iPad Pro
+iPad8,7	iPad Pro 12.9-inch (3rd generation) Wi-Fi + Cellular	iPad Pro
+iPad8,8	iPad Pro 12.9-inch (3rd generation) Wi-Fi + Cellular (1TB)	iPad Pro
+iPad8,9	iPad Pro 11-inch (2nd generation) Wi-Fi	iPad Pro
+iPhone1,1	iPhone	iPhone
+iPhone1,2	iPhone 3G	iPhone
+iPhone10,1	iPhone 8 (CDMA)	iPhone
+iPhone10,2	iPhone 8 Plus (CDMA)	iPhone
+iPhone10,3	iPhone X (CDMA)	iPhone
+iPhone10,4	iPhone 8 (GSM)	iPhone
+iPhone10,5	iPhone 8 Plus (GSM)	iPhone
+iPhone10,6	iPhone X (GSM)	iPhone
+iPhone11,2	iPhone XS	iPhone
+iPhone11,4	iPhone XS Max (China mainland)	iPhone
+iPhone11,6	iPhone XS Max	iPhone
+iPhone11,8	iPhone XR	iPhone
+iPhone12,1	iPhone 11	iPhone
+iPhone12,3	iPhone 11 Pro	iPhone
+iPhone12,5	iPhone 11 Pro Max	iPhone
+iPhone12,8	iPhone SE (2nd generation)	iPhone
+iPhone13,1	iPhone 12 mini	iPhone
+iPhone13,2	iPhone 12	iPhone
+iPhone13,3	iPhone 12 Pro	iPhone
+iPhone13,4	iPhone 12 Pro Max	iPhone
+iPhone14,2	iPhone 13 Pro	iPhone
+iPhone14,3	iPhone 13 Pro Max	iPhone
+iPhone14,4	iPhone 13 mini	iPhone
+iPhone14,5	iPhone 13	iPhone
+iPhone14,6	iPhone SE (3rd generation)	iPhone
+iPhone14,7	iPhone 14	iPhone
+iPhone14,8	iPhone 14 Plus	iPhone
+iPhone15,2	iPhone 14 Pro	iPhone
+iPhone15,3	iPhone 14 Pro Max	iPhone
+iPhone15,4	iPhone 15	iPhone
+iPhone15,5	iPhone 15 Plus	iPhone
+iPhone16,1	iPhone 15 Pro	iPhone
+iPhone16,2	iPhone 15 Pro Max	iPhone
+iPhone17,1	iPhone 16 Pro	iPhone
+iPhone17,2	iPhone 16 Pro Max	iPhone
+iPhone17,3	iPhone 16	iPhone
+iPhone17,4	iPhone 16 Plus	iPhone
+iPhone17,5	iPhone 16e	iPhone
+iPhone18,1	iPhone 17 Pro	iPhone
+iPhone18,2	iPhone 17 Pro Max	iPhone
+iPhone18,3	iPhone 17	iPhone
+iPhone18,4	iPhone Air	iPhone
+iPhone18,5	iPhone 17e	iPhone
+iPhone19,2	iPhone 18 Pro	iPhone
+iPhone19,3	iPhone 18 Pro Max (US)	iPhone
+iPhone19,4	iPhone Duo	iPhone
+iPhone19,7	iPhone 18 Pro Max (Global)	iPhone
+iPhone2,1	iPhone 3GS	iPhone
+iPhone3,1	iPhone 4 (GSM)	iPhone
+iPhone3,2	iPhone 4 (GSM, 2012)	iPhone
+iPhone3,3	iPhone 4 (CDMA)	iPhone
+iPhone4,1	iPhone 4S	iPhone
+iPhone5,1	iPhone 5 (GSM)	iPhone
+iPhone5,2	iPhone 5 (CDMA)	iPhone
+iPhone5,3	iPhone 5c (GSM)	iPhone
+iPhone5,4	iPhone 5c (CDMA)	iPhone
+iPhone6,1	iPhone 5s (GSM)	iPhone
+iPhone6,2	iPhone 5s (CDMA)	iPhone
+iPhone7,1	iPhone 6 Plus	iPhone
+iPhone7,2	iPhone 6	iPhone
+iPhone8,1	iPhone 6s	iPhone
+iPhone8,2	iPhone 6s Plus	iPhone
+iPhone8,4	iPhone SE (1st generation)	iPhone
+iPhone9,1	iPhone 7 (CDMA)	iPhone
+iPhone9,2	iPhone 7 Plus (CDMA)	iPhone
+iPhone9,3	iPhone 7 (GSM)	iPhone
+iPhone9,4	iPhone 7 Plus (GSM)	iPhone
+iPod1,1	iPod touch (1st generation)	iPod touch
+iPod2,1	iPod touch (2nd generation)	iPod touch
+iPod2,2	Unreleased iPod touch (2nd generation, Rev. A)	iPod touch
+iPod3,1	iPod touch (3rd generation)	iPod touch
+iPod4,1	iPod touch (4th generation)	iPod touch
+iPod4,2	Unreleased iPod touch	iPod touch
+iPod5,1	iPod touch (5th generation)	iPod touch
+iPod7,1	iPod touch (6th generation)	iPod touch
+iPod9,1	iPod touch (7th generation)	iPod touch

@@ -1,0 +1,96 @@
+name: LanDetector
+options:
+  bundleIdPrefix: com.lacdon
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+  groupSortPosition: top
+
+packages:
+  LanDetectorKit:
+    path: Packages/LanDetectorKit
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    # macOS 27 only reveals ARP/NDP neighbour MAC addresses to Developer ID signed apps,
+    # so both Debug and Release are signed with the Developer ID identity.
+    DEVELOPMENT_TEAM: N4828PE57J
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Developer ID Application"
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_EMIT_LOC_STRINGS: NO
+
+targets:
+  LanDetector:
+    type: application
+    platform: macOS
+    sources:
+      - path: LanDetector
+    dependencies:
+      - package: LanDetectorKit
+    info:
+      path: LanDetector/Info.plist
+      properties:
+        CFBundleDisplayName: LanDetector
+        CFBundleDevelopmentRegion: zh-Hans
+        LSApplicationCategoryType: public.app-category.utilities
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: "© 2026 LanDetector"
+        NSLocalNetworkUsageDescription: "LanDetector 需要访问本地网络，以发现、识别并监控局域网中的设备。"
+        NSBonjourServices:
+          - _services._dns-sd._udp
+          - _airplay._tcp
+          - _raop._tcp
+          - _companion-link._tcp
+          - _device-info._tcp
+          - _googlecast._tcp
+          - _spotify-connect._tcp
+          - _sonos._tcp
+          - _hap._tcp
+          - _homekit._tcp
+          - _matter._tcp
+          - _printer._tcp
+          - _ipp._tcp
+          - _ipps._tcp
+          - _pdl-datastream._tcp
+          - _uscan._tcp
+          - _scanner._tcp
+          - _smb._tcp
+          - _afpovertcp._tcp
+          - _adisk._tcp
+          - _ssh._tcp
+          - _sftp-ssh._tcp
+          - _rfb._tcp
+          - _http._tcp
+          - _workstation._tcp
+          - _sleep-proxy._udp
+          - _apple-mobdev2._tcp
+          - _airport._tcp
+          - _amzn-wplay._tcp
+          - _androidtvremote2._tcp
+          - _meshcop._udp
+          - _hue._tcp
+          - _axis-video._tcp
+          - _rtsp._tcp
+          - _esphomelib._tcp
+          - _home-assistant._tcp
+          - _mqtt._tcp
+          - _shelly._tcp
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lacdon.LanDetector
+        PRODUCT_NAME: LanDetector
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_PREVIEWS: YES
