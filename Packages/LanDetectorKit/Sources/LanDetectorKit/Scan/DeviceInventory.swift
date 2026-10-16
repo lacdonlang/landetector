@@ -42,6 +42,7 @@ public struct DeviceInventory: Sendable {
     private var pendingIPv6: [IPv6Address: Double] = [:]
     public private(set) var seenThisScan: Set<String> = []
     public private(set) var context: ScanContext?
+    private var presencePending = false
 
     public init(devices: [Device] = []) {
         for d in devices { insert(d) }
@@ -57,20 +58,26 @@ public struct DeviceInventory: Sendable {
         self.context = context
         seenThisScan = []
         pendingIPv6 = [:]
+        presencePending = true
         for id in devices.keys { refreshIdentity(id) }
     }
 
-    /// Marks devices in the scanned range that did not answer as offline.
+    /// Marks devices in the scanned range that did not answer as offline. A completed scan also adds a presence
+    /// sample to every device it could have seen; a cancelled one leaves the history alone.
     @discardableResult
-    public mutating func finishScan(now: Date = Date()) -> Set<String> {
+    public mutating func finishScan(now: Date = Date(), cancelled: Bool = false) -> Set<String> {
         guard let context else { return [] }
+        let recordsPresence = presencePending && !cancelled
+        presencePending = false
         var changed: Set<String> = []
-        for (id, d) in devices where d.isOnline && !seenThisScan.contains(id) {
+        for (id, d) in devices {
+            let seen = seenThisScan.contains(id)
             let inRange = d.ipv4.map(context.range.contains) ?? true
-            if inRange {
+            if d.isOnline, !seen, inRange {
                 devices[id]?.isOnline = false
                 changed.insert(id)
             }
+            if recordsPresence, seen || inRange { devices[id]?.recordPresence(online: seen, at: now) }
         }
         return changed
     }
@@ -314,6 +321,7 @@ public struct DeviceInventory: Sendable {
         m.banners = m.banners.merging(s.banners) { a, _ in a }
         m.latency = s.latency ?? m.latency
         m.latencyHistory = (m.latencyHistory + s.latencyHistory).suffix(60)
+        m.presence = Device.mergedPresence(m.presence, s.presence)
         m.customName = m.customName ?? s.customName
         m.customKind = m.customKind ?? s.customKind
         m.customURL = m.customURL ?? s.customURL

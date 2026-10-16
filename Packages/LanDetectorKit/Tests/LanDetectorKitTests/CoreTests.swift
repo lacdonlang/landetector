@@ -131,3 +131,71 @@ import Testing
         #expect(d?.isOnline == true)
     }
 }
+
+@Suite struct PresenceTests {
+    let t0 = Date(timeIntervalSince1970: 1_760_000_000)
+
+    @Test func completedScansRecordPresence() {
+        let iface = NetworkInterface(name: "en0", index: 1, displayName: "Wi-Fi", kind: .wifi, mac: nil,
+                                     ipv4: IPv4Address("10.0.0.2")!, netmask: IPv4Address("255.255.255.0")!,
+                                     gateway: IPv4Address("10.0.0.1"), ipv6: [])
+        var inv = DeviceInventory()
+        func scan(_ alive: [String], range: IPv4Range? = nil, at offset: TimeInterval, cancelled: Bool = false) {
+            let now = t0.addingTimeInterval(offset)
+            inv.apply(.started(ScanContext(interface: iface, range: range ?? iface.subnet, startedAt: now)), now: now)
+            for ip in alive { inv.apply(.alive(IPv4Address(ip)!, rtt: 1), now: now) }
+            inv.finishScan(now: now, cancelled: cancelled)
+        }
+        scan(["10.0.0.5", "10.0.0.9"], at: 0)
+        scan(["10.0.0.5"], at: 3600)
+        inv.finishScan(now: t0.addingTimeInterval(3700)) // a scan is recorded once
+        scan([], range: IPv4Range(string: "10.0.0.100-120"), at: 7200) // neither device was looked for
+        scan([], at: 10_800, cancelled: true)
+        #expect(inv.devices["ip:10.0.0.5"]?.presence.map(\.online) == [true, true])
+        #expect(inv.devices["ip:10.0.0.5"]?.presence.map(\.date) == [t0, t0.addingTimeInterval(3600)])
+        #expect(inv.devices["ip:10.0.0.9"]?.presence.map(\.online) == [true, false])
+    }
+
+    @Test func presenceHistoryStaysCompact() {
+        // Live monitoring every 5 minutes for 40 days, with a one-hour outage on day 35.
+        var d = Device(id: "x")
+        let steps = 40 * 288, outage = (35 * 288)..<(35 * 288 + 12)
+        for step in 0..<steps {
+            d.recordPresence(online: !outage.contains(step), at: t0.addingTimeInterval(Double(step) * 300))
+        }
+        let end = t0.addingTimeInterval(Double(steps - 1) * 300)
+        let history = d.presence
+        #expect(history.count <= Device.presenceLimit)
+        #expect(history.first.map { $0.date >= end.addingTimeInterval(-Device.presenceRetention) } == true)
+        #expect(history.last?.date == end)
+        // Both edges of the outage survive the thinning.
+        for (step, online) in [(outage.lowerBound - 1, true), (outage.lowerBound, false),
+                               (outage.upperBound - 1, false), (outage.upperBound, true)] {
+            #expect(history.contains(PresenceSample(date: t0.addingTimeInterval(Double(step) * 300), online: online)))
+        }
+        // Observed stretches keep samples close: 20 minutes apart over the last day, 2 hours before.
+        for (a, b) in zip(history, history.dropFirst()) {
+            let limit: TimeInterval = end.timeIntervalSince(a.date) < 86_400 ? 20 * 60 : 2 * 3600
+            #expect(b.date.timeIntervalSince(a.date) <= limit)
+        }
+    }
+
+    @Test func presenceCodingAndMerging() throws {
+        var a = Device(id: "mac:aa:bb:cc:dd:ee:01")
+        a.recordPresence(online: true, at: t0)
+        a.recordPresence(online: false, at: t0.addingTimeInterval(600.7))
+        let json = String(decoding: try JSONEncoder().encode(a), as: UTF8.self)
+        #expect(json.contains(#""presence":[1760000000,-1760000600]"#))
+        #expect(try JSONDecoder().decode(Device.self, from: Data(json.utf8)).presence == a.presence)
+        // Stores written before the history existed still load.
+        let legacy = try JSONDecoder().decode(Device.self, from: Data(#"{"id":"ip:10.0.0.9"}"#.utf8))
+        #expect(legacy.presence.isEmpty)
+        // Two records of one device: where both judged the same scan, online wins.
+        var b = Device(id: "ip:10.0.0.9")
+        b.recordPresence(online: true, at: t0.addingTimeInterval(600))
+        b.recordPresence(online: true, at: t0.addingTimeInterval(3600))
+        let merged = DeviceInventory.merged(b, into: a).presence
+        #expect(merged.map(\.online) == [true, true, true])
+        #expect(merged.map(\.date) == [0, 600, 3600].map { t0.addingTimeInterval($0) })
+    }
+}

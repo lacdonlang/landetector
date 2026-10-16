@@ -15,6 +15,7 @@
 		5B71A2EEAB79C9A8273D94EF /* DeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28113149DAEE185D80EFB2E1 /* DeviceStore.swift */; };
 		624F7425F2CDF6794F28C665 /* LanDetectorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A170CE677FEAD5CD1C4FDEB /* LanDetectorApp.swift */; };
 		74F274E3717DA5B16C024A25 /* LanDetectorKit in Frameworks */ = {isa = PBXBuildFile; productRef = DDF98845F86E1C946DA60E5E /* LanDetectorKit */; };
+		7F02338CAE48572047E51FAF /* PresenceTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEFB8DEE49E5A341E90309C4 /* PresenceTimeline.swift */; };
 		8C7AA0C725AEF3269B4F181D /* DeviceInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C7804429E8760A638C38F9 /* DeviceInspector.swift */; };
 		9907CD66760D22BDD3543691 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422DDD93933097F2695A473F /* SidebarView.swift */; };
 		A26696A0151CF5459E41EFBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D343F328D29D8867F69D95F0 /* Assets.xcassets */; };
@@ -46,6 +47,7 @@
 		DF57FB662CADB96FAA926C8F /* LanDetector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanDetector.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4E053E6DDD63A91D9A232D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F6BD3132E5C794E959168688 /* LanDetectorKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LanDetectorKit; path = Packages/LanDetectorKit; sourceTree = SOURCE_ROOT; };
+		FEFB8DEE49E5A341E90309C4 /* PresenceTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresenceTimeline.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +115,7 @@
 				640B231D058F40D0107149F5 /* DeviceTableView.swift */,
 				AB717B90844BB6BA459897C7 /* MenuBarView.swift */,
 				7CB9CBFC5CBF60145359EC49 /* PortScanSheet.swift */,
+				FEFB8DEE49E5A341E90309C4 /* PresenceTimeline.swift */,
 				2A2F1B044783E4D5FB03D96A /* SettingsView.swift */,
 				422DDD93933097F2695A473F /* SidebarView.swift */,
 			);
@@ -230,6 +233,7 @@
 				BBB7A8CB1F225BEC5A35933F /* MenuBarView.swift in Sources */,
 				B767E224C375092F6BD57BA7 /* PortScanSheet.swift in Sources */,
 				31FC3A2B54EDFFE05B324576 /* Preferences.swift in Sources */,
+				7F02338CAE48572047E51FAF /* PresenceTimeline.swift in Sources */,
 				4B7B798437466BF29D75E469 /* SettingsView.swift in Sources */,
 				9907CD66760D22BDD3543691 /* SidebarView.swift in Sources */,
 			);

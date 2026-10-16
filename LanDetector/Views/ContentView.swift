@@ -24,7 +24,13 @@ struct ContentView: View {
         }
         .environment(\.textScale, model.textScale)
         .navigationTitle(model.interface?.displayName ?? "LanDetector")
-        .navigationSubtitle(model.interface.map { "\($0.cidr) · 网关 \($0.gateway?.description ?? "—")" } ?? "")
+        .navigationSubtitle(subtitle)
+    }
+
+    private var subtitle: String {
+        guard let iface = model.interface else { return "" }
+        let range = model.selectedRange.map { " · 范围 \($0.title)" } ?? ""
+        return "\(iface.cidr) · 网关 \(iface.gateway?.description ?? "—")\(range)"
     }
 }
 
@@ -93,14 +99,32 @@ struct MainToolbar: ToolbarContent {
 
 struct InterfaceMenu: View {
     private let model = AppModel.shared
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Menu {
-            ForEach(model.interfaces) { iface in
-                Button {
-                    model.selectInterface(iface.name)
-                } label: {
-                    Label("\(iface.displayName) (\(iface.name)) · \(iface.cidr)", systemImage: iface.kind.symbol)
+            Section("网络接口") {
+                ForEach(model.interfaces) { iface in
+                    Button {
+                        model.selectInterface(iface.name)
+                    } label: {
+                        Label("\(iface.displayName) (\(iface.name)) · \(iface.cidr)", systemImage: iface.kind.symbol)
+                    }
+                }
+            }
+            Section("扫描范围") {
+                Toggle(isOn: rangeBinding(nil)) {
+                    Text("整个子网" + (model.interface.map { " · \($0.cidr)" } ?? ""))
+                }
+                ForEach(model.rangePresets) { preset in
+                    Toggle(isOn: rangeBinding(preset.id)) {
+                        Text(preset.name.isEmpty ? preset.range : "\(preset.name) · \(preset.range)")
+                    }
+                    .disabled(preset.ipv4Range == nil)
+                }
+                Button("编辑范围…") {
+                    UserDefaults.standard.set(SettingsTab.scan.rawValue, forKey: Prefs.settingsTab)
+                    openSettings()
                 }
             }
             Divider()
@@ -108,7 +132,12 @@ struct InterfaceMenu: View {
         } label: {
             Label(model.interface?.displayName ?? "无网络", systemImage: model.interface?.kind.symbol ?? "network.slash")
         }
-        .help("选择要扫描的网络接口")
+        .help("选择要扫描的网络接口与范围")
+    }
+
+    /// Checked for the active range; choosing an entry (even the checked one) rescans.
+    private func rangeBinding(_ id: UUID?) -> Binding<Bool> {
+        Binding(get: { model.selectedRangeID == id }, set: { _ in model.selectRange(id) })
     }
 }
 

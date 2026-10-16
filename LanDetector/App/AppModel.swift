@@ -30,6 +30,20 @@ final class AppModel {
     var dnsServers: [String] = []
     private(set) var networkKey: String?
 
+    // MARK: Scan range
+    /// Saved custom ranges, edited in Settings ▸ 扫描.
+    var rangePresets: [RangePreset] = Prefs.rangePresetsValue {
+        didSet {
+            Prefs.rangePresetsValue = rangePresets
+            if let id = selectedRangeID, !rangePresets.contains(where: { $0.id == id }) { selectedRangeID = nil }
+        }
+    }
+    /// The preset scans cover; `nil` scans the whole subnet.
+    var selectedRangeID: UUID? = Prefs.selectedRangePresetID {
+        didSet { Prefs.selectedRangePresetID = selectedRangeID }
+    }
+    var selectedRange: RangePreset? { rangePresets.first { $0.id == selectedRangeID } }
+
     // MARK: Devices
     @ObservationIgnored private var inventory = DeviceInventory()
     private(set) var devices: [Device] = []
@@ -226,8 +240,23 @@ final class AppModel {
         if isScanning {
             isScanning = false
             phase = nil
-            inventory.finishScan()
+            inventory.finishScan(cancelled: true)
             publish()
+        }
+    }
+
+    /// Switches the scan range and rescans. A running scan is abandoned without marking the devices it has not
+    /// reached yet offline: the new range may not cover them.
+    func selectRange(_ id: UUID?) {
+        selectedRangeID = id
+        guard isScanning, let running = scanTask else {
+            startScan()
+            return
+        }
+        running.cancel()
+        Task {
+            await running.value
+            startScan()
         }
     }
 

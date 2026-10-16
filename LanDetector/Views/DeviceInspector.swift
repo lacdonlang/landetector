@@ -26,6 +26,7 @@ private struct DeviceDetail: View {
     @State private var name = ""
     @State private var notes = ""
     @State private var customURL = ""
+    @AppStorage(Prefs.presenceWindow) private var presenceWindow = PresenceWindow.day
 
     var body: some View {
         Form {
@@ -139,9 +140,30 @@ private struct DeviceDetail: View {
                 }
             }
 
-            Section("历史") {
+            Section {
                 LabeledContent("首次发现", value: device.firstSeen.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("最后在线", value: device.isOnline ? "现在" : device.lastSeen.formatted(date: .abbreviated, time: .shortened))
+                if device.presence.isEmpty {
+                    Text("完成一次扫描后开始记录在线时间线。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    PresenceTimeline(samples: device.presence, window: presenceWindow)
+                }
+            } header: {
+                HStack {
+                    Text("历史")
+                    Spacer()
+                    if !device.presence.isEmpty {
+                        Picker("时间范围", selection: $presenceWindow) {
+                            ForEach(PresenceWindow.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .fixedSize()
+                    }
+                }
             }
 
             Section("备注") {

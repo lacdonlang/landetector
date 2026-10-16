@@ -99,6 +99,8 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
     public var isOnline: Bool
     public var latency: Double?
     public var latencyHistory: [Double]
+    /// Online / offline verdicts of completed scans, oldest first.
+    public var presence: [PresenceSample]
     public var isGateway: Bool
     public var isCurrentDevice: Bool
 
@@ -117,6 +119,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
         lastSeen = now
         isOnline = false
         latencyHistory = []
+        presence = []
         isGateway = false
         isCurrentDevice = false
     }
@@ -194,7 +197,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, mac, ipv4, ipv6, vendor, vendorFull, dnsName, mdnsName, netbiosName, netbiosGroup, upnp, services,
              openPorts, portsScannedAt, banners, kind, model, manufacturer, osName, friendlyName, customName, customKind, notes,
-             customURL, isFavorite, firstSeen, lastSeen, latency, latencyHistory, isGateway, isCurrentDevice
+             customURL, isFavorite, firstSeen, lastSeen, latency, latencyHistory, presence, isGateway, isCurrentDevice
     }
 
     public init(from decoder: Decoder) throws {
@@ -228,6 +231,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
         lastSeen = try c.decodeIfPresent(Date.self, forKey: .lastSeen) ?? firstSeen
         latency = try c.decodeIfPresent(Double.self, forKey: .latency)
         latencyHistory = (try? c.decodeIfPresent([Double].self, forKey: .latencyHistory)) ?? []
+        presence = (try? c.decodeIfPresent([PresenceSample].self, forKey: .presence)) ?? []
         isGateway = try c.decodeIfPresent(Bool.self, forKey: .isGateway) ?? false
         isCurrentDevice = try c.decodeIfPresent(Bool.self, forKey: .isCurrentDevice) ?? false
         isOnline = false

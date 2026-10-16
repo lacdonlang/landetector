@@ -1,12 +1,18 @@
 import LanDetectorKit
 import SwiftUI
 
+enum SettingsTab: String {
+    case general, scan, data
+}
+
 struct SettingsView: View {
+    @AppStorage(Prefs.settingsTab) private var tab = SettingsTab.general
+
     var body: some View {
-        TabView {
-            Tab("通用", systemImage: "gearshape") { GeneralSettings() }
-            Tab("扫描", systemImage: "dot.radiowaves.left.and.right") { ScanSettings() }
-            Tab("数据", systemImage: "externaldrive") { DataSettings() }
+        TabView(selection: $tab) {
+            Tab("通用", systemImage: "gearshape", value: .general) { GeneralSettings() }
+            Tab("扫描", systemImage: "dot.radiowaves.left.and.right", value: .scan) { ScanSettings() }
+            Tab("数据", systemImage: "externaldrive", value: .data) { DataSettings() }
         }
         .frame(width: 560, height: 470)
     }
@@ -56,6 +62,7 @@ private struct GeneralSettings: View {
 }
 
 private struct ScanSettings: View {
+    private let model = AppModel.shared
     @AppStorage(Prefs.thoroughness) private var thoroughness = 1.0
     @AppStorage(Prefs.liveInterval) private var liveInterval = 60.0
     @AppStorage(Prefs.useMDNS) private var useMDNS = true
@@ -63,23 +70,30 @@ private struct ScanSettings: View {
     @AppStorage(Prefs.useDNS) private var useDNS = true
     @AppStorage(Prefs.useSSDP) private var useSSDP = true
     @AppStorage(Prefs.useIPv6) private var useIPv6 = true
-    @AppStorage(Prefs.customRangeEnabled) private var customRangeEnabled = false
-    @AppStorage(Prefs.customRange) private var customRange = ""
+    @State private var editing: RangePreset?
 
     var body: some View {
+        @Bindable var model = model
         Form {
-            Section("扫描范围") {
-                Toggle("使用自定义 IP 范围", isOn: $customRangeEnabled)
-                if customRangeEnabled {
-                    TextField("范围", text: $customRange, prompt: Text("192.168.1.1-254 或 10.0.0.0/22"))
-                    if let range = IPv4Range(string: customRange) {
-                        Text("\(range.description) · \(range.count) 个地址")
-                            .font(.caption)
-                            .foregroundStyle(range.count > 4096 ? .orange : .secondary)
-                    } else if !customRange.isEmpty {
-                        Text("格式无效").font(.caption).foregroundStyle(.red)
+            Section {
+                Picker("扫描", selection: $model.selectedRangeID) {
+                    Text("整个子网").tag(UUID?.none)
+                    ForEach(model.rangePresets) { preset in
+                        Text(preset.title).tag(UUID?.some(preset.id))
                     }
                 }
+                ForEach(model.rangePresets) { preset in
+                    RangePresetRow(preset: preset) {
+                        editing = preset
+                    } onDelete: {
+                        model.rangePresets.removeAll { $0.id == preset.id }
+                    }
+                }
+                Button("添加范围…", systemImage: "plus") { editing = RangePreset(name: "", range: "") }
+            } header: {
+                Text("扫描范围")
+            } footer: {
+                Text("也可以在工具栏的网络菜单中切换范围，切换后立即扫描。")
             }
             Section("扫描方式") {
                 Picker("强度", selection: $thoroughness) {
@@ -108,6 +122,96 @@ private struct ScanSettings: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(item: $editing) { preset in
+            RangePresetEditor(preset: preset, isNew: !model.rangePresets.contains { $0.id == preset.id }) { saved in
+                if let i = model.rangePresets.firstIndex(where: { $0.id == saved.id }) {
+                    model.rangePresets[i] = saved
+                } else {
+                    model.rangePresets.append(saved)
+                    model.selectedRangeID = saved.id
+                }
+            }
+        }
+    }
+}
+
+/// A saved range with its size and edit / delete buttons.
+private struct RangePresetRow: View {
+    let preset: RangePreset
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(preset.title)
+                if let range = preset.ipv4Range {
+                    Text((preset.name.isEmpty ? "" : "\(preset.range) · ") + "\(range.count) 个地址")
+                        .font(.caption)
+                        .foregroundStyle(range.count > ScanOptions().maxHosts ? .orange : .secondary)
+                } else {
+                    Text("格式无效：\(preset.range)").font(.caption).foregroundStyle(.red)
+                }
+            }
+            Spacer()
+            Button("编辑", systemImage: "pencil", action: onEdit)
+                .help("编辑")
+            Button("删除", systemImage: "trash", role: .destructive, action: onDelete)
+                .help("删除")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+    }
+}
+
+/// Sheet for adding or editing a saved range.
+private struct RangePresetEditor: View {
+    @Environment(\.dismiss) private var dismiss
+    @State var preset: RangePreset
+    let isNew: Bool
+    let onSave: (RangePreset) -> Void
+
+    var body: some View {
+        let range = IPv4Range(string: preset.range)
+        let limit = ScanOptions().maxHosts
+        VStack(spacing: 0) {
+            Form {
+                Section {
+                    TextField("名称", text: $preset.name, prompt: Text("例如：办公室"))
+                    TextField("范围", text: $preset.range, prompt: Text("192.168.1.1-254 或 10.0.0.0/22"))
+                } footer: {
+                    Group {
+                        if let range {
+                            Text("\(range.description) · \(range.count) 个地址"
+                                + (range.count > limit ? "，只扫描最靠近本机的 \(limit) 个" : ""))
+                                .foregroundStyle(range.count > limit ? .orange : .secondary)
+                        } else if preset.range.isEmpty {
+                            Text("起止地址（192.168.1.10-200、10.0.0.5-10.0.1.4）或 CIDR（10.0.0.0/22）。")
+                        } else {
+                            Text("格式无效").foregroundStyle(.red)
+                        }
+                    }
+                    // Two lines either way, so the sheet does not jump while typing.
+                    .lineLimit(2, reservesSpace: true)
+                }
+            }
+            .formStyle(.grouped)
+            HStack {
+                Spacer()
+                Button("取消", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(isNew ? "添加" : "存储") {
+                    preset.name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    preset.range = preset.range.trimmingCharacters(in: .whitespacesAndNewlines)
+                    onSave(preset)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(range == nil)
+            }
+            .padding([.horizontal, .bottom], 20)
+        }
+        .frame(width: 420)
     }
 }
 
