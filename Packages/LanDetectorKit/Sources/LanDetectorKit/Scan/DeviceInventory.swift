@@ -208,6 +208,24 @@ public struct DeviceInventory: Sendable {
         devices[id]?.isOnline = true
     }
 
+    /// Folds in devices from another store of the same network. Current values win; history is combined.
+    public mutating func absorb(_ others: [Device]) {
+        for incoming in others {
+            if let existing = devices[incoming.id] {
+                devices[incoming.id] = Self.merged(incoming, into: existing, preferSourceLatency: false)
+            } else {
+                var d = incoming
+                d.isOnline = false
+                devices[d.id] = d
+                // Historical records never take an address away from a current device.
+                if let mac = d.mac, byMAC[mac] == nil { byMAC[mac] = d.id }
+                if let ip = d.ipv4, byIP[ip] == nil { byIP[ip] = d.id }
+            }
+            for v6 in devices[incoming.id]?.ipv6 ?? [] where byIPv6[v6] == nil { byIPv6[v6] = incoming.id }
+            refreshIdentity(incoming.id)
+        }
+    }
+
     public mutating func remove(_ id: String) {
         guard let d = devices.removeValue(forKey: id) else { return }
         if let ip = d.ipv4, byIP[ip] == id { byIP[ip] = nil }
@@ -239,9 +257,17 @@ public struct DeviceInventory: Sendable {
 
     private mutating func insert(_ d: Device) {
         devices[d.id] = d
-        if let ip = d.ipv4, byIP[ip] == nil || d.mac != nil { byIP[ip] = d.id }
+        if let ip = d.ipv4, holdsAddress(d, over: byIP[ip].flatMap { devices[$0] }) { byIP[ip] = d.id }
         if let mac = d.mac { byMAC[mac] = d.id }
         for v6 in d.ipv6 { byIPv6[v6] = d.id }
+    }
+
+    /// Several records can remember one address (DHCP churn, a replaced router, merged stores). Until a scan says
+    /// otherwise the address belongs to a MAC record over a placeholder, and then to the most recently seen one.
+    private func holdsAddress(_ d: Device, over current: Device?) -> Bool {
+        guard let current, current.id != d.id else { return true }
+        if (d.mac != nil) != (current.mac != nil) { return d.mac != nil }
+        return d.lastSeen >= current.lastSeen
     }
 
     private mutating func markSeen(_ id: String, now: Date) {
@@ -296,7 +322,10 @@ public struct DeviceInventory: Sendable {
         if let old = devices[target]?.ipv4, old != ip, byIP[old] == target { byIP[old] = nil }
         devices[target]?.ipv4 = ip
         devices[target]?.mac = mac
+        let previousHolder = byIP[ip]
         byIP[ip] = target
+        // The record that used to hold this address may have been flagged as gateway / this Mac because of it.
+        if let previousHolder, previousHolder != target, devices[previousHolder] != nil { refreshIdentity(previousHolder) }
         return target
     }
 
@@ -308,7 +337,8 @@ public struct DeviceInventory: Sendable {
         for v6 in merged.ipv6 { byIPv6[v6] = targetID }
     }
 
-    static func merged(_ s: Device, into t: Device) -> Device {
+    /// `preferSourceLatency`: a placeholder merged into its MAC record carries the newest ping; history does not.
+    static func merged(_ s: Device, into t: Device, preferSourceLatency: Bool = true) -> Device {
         var m = t
         m.dnsName = m.dnsName ?? s.dnsName
         m.mdnsName = m.mdnsName ?? s.mdnsName
@@ -319,7 +349,7 @@ public struct DeviceInventory: Sendable {
         m.openPorts = Array(Set(m.openPorts + s.openPorts)).sorted()
         m.portsScannedAt = m.portsScannedAt ?? s.portsScannedAt
         m.banners = m.banners.merging(s.banners) { a, _ in a }
-        m.latency = s.latency ?? m.latency
+        m.latency = preferSourceLatency ? (s.latency ?? m.latency) : (m.latency ?? s.latency)
         m.latencyHistory = (m.latencyHistory + s.latencyHistory).suffix(60)
         m.presence = Device.mergedPresence(m.presence, s.presence)
         m.customName = m.customName ?? s.customName
@@ -327,6 +357,7 @@ public struct DeviceInventory: Sendable {
         m.customURL = m.customURL ?? s.customURL
         if m.notes.isEmpty { m.notes = s.notes }
         m.isFavorite = m.isFavorite || s.isFavorite
+        m.isWatched = m.isWatched || s.isWatched
         m.firstSeen = min(m.firstSeen, s.firstSeen)
         m.lastSeen = max(m.lastSeen, s.lastSeen)
         m.isOnline = m.isOnline || s.isOnline
@@ -356,8 +387,10 @@ public struct DeviceInventory: Sendable {
             d.vendor = OUIDatabase.shortName(full)
         }
         if let iface = context?.interface {
-            d.isGateway = d.ipv4 != nil && d.ipv4 == iface.gateway
-            d.isCurrentDevice = (d.ipv4 != nil && d.ipv4 == iface.ipv4) || (d.mac != nil && d.mac == iface.mac)
+            // Only the record currently holding an address counts – older records may remember the same one.
+            let holdsIP = d.ipv4.map { byIP[$0] == id } ?? false
+            d.isGateway = holdsIP && d.ipv4 == iface.gateway
+            d.isCurrentDevice = (holdsIP && d.ipv4 == iface.ipv4) || (d.mac != nil && d.mac == iface.mac)
         }
         let identity = DeviceClassifier.identify(d)
         d.kind = identity.kind

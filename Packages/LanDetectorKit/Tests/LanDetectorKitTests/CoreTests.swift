@@ -199,3 +199,161 @@ import Testing
         #expect(merged.map(\.date) == [0, 600, 3600].map { t0.addingTimeInterval($0) })
     }
 }
+
+@Suite struct WatchTests {
+    private func device(_ states: [Bool]) -> Device {
+        var d = Device(id: "w")
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        d.presence = states.enumerated().map { PresenceSample(date: start.addingTimeInterval(Double($0.offset) * 60), online: $0.element) }
+        return d
+    }
+
+    @Test func lastPresenceChangeFindsStartOfCurrentRun() throws {
+        #expect(device([]).lastPresenceChange == nil)
+        #expect(device([true, true, true]).lastPresenceChange == nil)
+        let wentOffline = try #require(device([true, true, false, false]).lastPresenceChange)
+        #expect(wentOffline.online == false)
+        #expect(wentOffline.date == Date(timeIntervalSince1970: 1_800_000_000 + 120))
+        let cameBack = try #require(device([true, false, true]).lastPresenceChange)
+        #expect(cameBack.online == true)
+        #expect(cameBack.date == Date(timeIntervalSince1970: 1_800_000_000 + 120))
+    }
+
+    @Test func watchFlagIsStoredAndMerged() throws {
+        var d = Device(id: "mac:aa:bb:cc:dd:ee:02", mac: MACAddress("aa:bb:cc:dd:ee:02"))
+        #expect(d.isWatched == false)
+        d.isWatched = true
+        let decoded = try JSONDecoder().decode(Device.self, from: JSONEncoder().encode(d))
+        #expect(decoded.isWatched)
+        // Records written before the flag existed decode as unwatched.
+        let legacy = try JSONDecoder().decode(Device.self, from: Data(#"{"id":"x"}"#.utf8))
+        #expect(legacy.isWatched == false)
+        #expect(DeviceInventory.merged(d, into: Device(id: "other")).isWatched)
+    }
+}
+
+@Suite struct NetworkMatcherTests {
+    private let range = IPv4Range(string: "192.168.99.0/24")!
+    private let me = MACAddress("60:3e:5f:38:65:21")!
+    private func mac(_ n: UInt64) -> MACAddress { MACAddress(value: 0xF838_8DBD_0D00 + n) }
+    private func store(_ key: String, _ age: TimeInterval, subnet: String? = "192.168.99.0/24", gateways: [MACAddress] = [],
+                       macs: [MACAddress], ips: [String] = []) -> NetworkFingerprint {
+        NetworkFingerprint(key: key, savedAt: Date(timeIntervalSinceNow: -age), subnet: subnet, gatewayMACs: Set(gateways),
+                           deviceMACs: Set(macs), deviceIPs: ips.compactMap(IPv4Address.init))
+    }
+    private func decide(gateway: MACAddress?, visible: [MACAddress], _ stores: [NetworkFingerprint]) -> NetworkMatcher.Decision {
+        NetworkMatcher.match(subnet: "192.168.99.0/24", range: range, gatewayMAC: gateway, visibleMACs: Set(visible),
+                             selfMAC: me, stores: stores)
+    }
+
+    @Test func subnetKeyUsesTheNetworkAddress() {
+        #expect(NetworkMatcher.subnetKey(IPv4Address("192.168.99.12")!, netmask: IPv4Address("255.255.255.0")!) == "192.168.99.0/24")
+    }
+
+    @Test func knownGatewayWins() {
+        let d = decide(gateway: mac(1), visible: [], [store("a", 100, gateways: [mac(1)], macs: [mac(5)])])
+        #expect(d == .init(key: "a", merge: []))
+    }
+
+    @Test func oneRouterServingTwoSubnetsKeepsThemApart() {
+        // The H3C router is the gateway of 192.168.77.0/24 and just a device (or the gateway) on 192.168.99.0/24.
+        let other = store("vlan-77", 10, subnet: "192.168.77.0/24", gateways: [mac(1)], macs: [mac(1), mac(2), mac(3)])
+        #expect(decide(gateway: mac(1), visible: [mac(1), mac(2), mac(3)], [other]) == .init(key: nil, merge: []))
+    }
+
+    @Test func newGatewayMACStillFindsTheNetworkByItsDevices() {
+        // The VM gateway was recreated with a new MAC; the access points are the same.
+        let stores = [store("old-gw", 50, gateways: [mac(1)], macs: [mac(2), mac(3), mac(4), me]),
+                      store("fallback", 10, macs: [mac(2), mac(3), me]),
+                      store("other-lan", 5, subnet: "10.0.0.0/24", macs: [mac(2), mac(3)])]
+        let d = decide(gateway: mac(9), visible: [mac(2), mac(3), mac(4), me], stores)
+        #expect(d == .init(key: "fallback", merge: ["old-gw"]))
+    }
+
+    @Test func sameSubnetWithoutSharedDevicesIsADifferentNetwork() {
+        // A café on 192.168.99.0/24: only this Mac is on both networks.
+        let d = decide(gateway: mac(9), visible: [mac(7), me], [store("home", 10, gateways: [mac(1)], macs: [mac(2), mac(3), me])])
+        #expect(d == .init(key: nil, merge: []))
+    }
+
+    @Test func withoutEvidenceTheLatestStoreOfTheSubnetIsReused() {
+        let d = decide(gateway: nil, visible: [], [store("old", 100, macs: [mac(2)]), store("new", 10, macs: [mac(3)]),
+                                                   store("elsewhere", 1, subnet: "10.0.0.0/24", macs: [])])
+        #expect(d == .init(key: "new", merge: []))
+    }
+
+    @Test func legacyStoresAreMatchedByTheirDeviceAddresses() {
+        let legacy = store("legacy", 10, subnet: nil, macs: [mac(2), mac(3)], ips: ["192.168.99.1", "192.168.99.2", "10.0.0.9"])
+        #expect(decide(gateway: nil, visible: [mac(2), mac(3)], [legacy]) == .init(key: "legacy", merge: []))
+    }
+
+    @Test func mergingKeepsTheNewestValuesAndTheOldestHistory() {
+        var newer = Device(id: "mac:aa:bb:cc:dd:ee:03", mac: MACAddress("aa:bb:cc:dd:ee:03"), now: Date(timeIntervalSince1970: 2_000))
+        newer.customName = "客厅电视"
+        var older = Device(id: "mac:aa:bb:cc:dd:ee:03", mac: MACAddress("aa:bb:cc:dd:ee:03"), now: Date(timeIntervalSince1970: 1_000))
+        older.customName = "电视"
+        older.notes = "在客厅"
+        let onlyOld = Device(id: "mac:aa:bb:cc:dd:ee:04", mac: MACAddress("aa:bb:cc:dd:ee:04"))
+        let merged = NetworkMatcher.mergeDevices([[newer], [older, onlyOld]])
+        #expect(merged.count == 2)
+        let tv = merged.first { $0.id == newer.id }
+        #expect(tv?.customName == "客厅电视")
+        #expect(tv?.notes == "在客厅")
+        #expect(tv?.firstSeen == Date(timeIntervalSince1970: 1_000))
+    }
+}
+
+@Suite struct AbsorbTests {
+    @Test func absorbedHistoryNeverStealsCurrentAddresses() {
+        let iface = NetworkInterface(name: "en0", index: 1, displayName: "Wi-Fi", kind: .wifi, mac: nil,
+                                     ipv4: IPv4Address("10.0.0.2")!, netmask: IPv4Address("255.255.255.0")!,
+                                     gateway: IPv4Address("10.0.0.1"), ipv6: [])
+        var inv = DeviceInventory()
+        inv.apply(.started(ScanContext(interface: iface, range: iface.subnet, startedAt: Date())))
+        let current = MACAddress("aa:bb:cc:dd:ee:10")!
+        inv.apply(.neighbors([ARPEntry(ip: IPv4Address("10.0.0.1")!, mac: current, interface: "en0", isPermanent: false,
+                                       isFresh: true)], source: .arpCommand))
+        inv.apply(.alive(IPv4Address("10.0.0.1")!, rtt: 2))
+
+        // The old gateway (a VM that has since been recreated) used the same address.
+        var oldGateway = Device(id: "mac:aa:bb:cc:dd:ee:11", mac: MACAddress("aa:bb:cc:dd:ee:11"), ipv4: IPv4Address("10.0.0.1"))
+        oldGateway.customName = "旧网关"
+        var sameDevice = Device(id: Device.key(for: current), mac: current, ipv4: IPv4Address("10.0.0.1"),
+                                now: Date(timeIntervalSince1970: 1_000))
+        sameDevice.notes = "机房"
+        sameDevice.latency = 99
+        inv.absorb([oldGateway, sameDevice])
+
+        #expect(inv.devices.count == 2)
+        #expect(inv.device(forIP: IPv4Address("10.0.0.1")!)?.mac == current)
+        let merged = inv.devices[Device.key(for: current)]
+        #expect(merged?.notes == "机房")
+        #expect(merged?.latency == 2)
+        #expect(merged?.firstSeen == Date(timeIntervalSince1970: 1_000))
+        #expect(inv.devices["mac:aa:bb:cc:dd:ee:11"]?.isOnline == false)
+    }
+}
+
+@Suite struct SharedAddressTests {
+    @Test func theNewestRecordOwnsARememberedAddressAndOnlyItIsTheGateway() {
+        let ip = IPv4Address("10.0.0.1")!
+        var oldVM = Device(id: "mac:aa:bb:cc:dd:ee:21", mac: MACAddress("aa:bb:cc:dd:ee:21"), ipv4: ip,
+                           now: Date(timeIntervalSince1970: 1_000))
+        oldVM.isGateway = true
+        let newVM = Device(id: "mac:aa:bb:cc:dd:ee:22", mac: MACAddress("aa:bb:cc:dd:ee:22"), ipv4: ip,
+                           now: Date(timeIntervalSince1970: 2_000))
+        // Insertion order must not matter.
+        var inv = DeviceInventory(devices: [newVM, oldVM])
+        #expect(inv.device(forIP: ip)?.id == newVM.id)
+
+        let iface = NetworkInterface(name: "en0", index: 1, displayName: "Wi-Fi", kind: .wifi, mac: nil,
+                                     ipv4: IPv4Address("10.0.0.2")!, netmask: IPv4Address("255.255.255.0")!,
+                                     gateway: ip, ipv6: [])
+        inv.apply(.started(ScanContext(interface: iface, range: iface.subnet, startedAt: Date())))
+        inv.apply(.alive(ip, rtt: 1))
+        #expect(inv.devices[newVM.id]?.isOnline == true)
+        #expect(inv.devices[oldVM.id]?.isOnline == false)
+        #expect(inv.devices[newVM.id]?.isGateway == true)
+        #expect(inv.devices[oldVM.id]?.isGateway == false)
+    }
+}

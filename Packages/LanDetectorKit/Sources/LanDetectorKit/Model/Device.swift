@@ -92,6 +92,8 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
     public var notes: String
     public var customURL: String?
     public var isFavorite: Bool
+    /// Notify when a completed scan finds this device going online or offline.
+    public var isWatched: Bool
 
     // Status.
     public var firstSeen: Date
@@ -115,6 +117,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
         kind = .unknown
         notes = ""
         isFavorite = false
+        isWatched = false
         firstSeen = now
         lastSeen = now
         isOnline = false
@@ -197,7 +200,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, mac, ipv4, ipv6, vendor, vendorFull, dnsName, mdnsName, netbiosName, netbiosGroup, upnp, services,
              openPorts, portsScannedAt, banners, kind, model, manufacturer, osName, friendlyName, customName, customKind, notes,
-             customURL, isFavorite, firstSeen, lastSeen, latency, latencyHistory, presence, isGateway, isCurrentDevice
+             customURL, isFavorite, isWatched, firstSeen, lastSeen, latency, latencyHistory, presence, isGateway, isCurrentDevice
     }
 
     public init(from decoder: Decoder) throws {
@@ -227,6 +230,7 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         customURL = try c.decodeIfPresent(String.self, forKey: .customURL)
         isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        isWatched = try c.decodeIfPresent(Bool.self, forKey: .isWatched) ?? false
         firstSeen = try c.decodeIfPresent(Date.self, forKey: .firstSeen) ?? Date()
         lastSeen = try c.decodeIfPresent(Date.self, forKey: .lastSeen) ?? firstSeen
         latency = try c.decodeIfPresent(Double.self, forKey: .latency)

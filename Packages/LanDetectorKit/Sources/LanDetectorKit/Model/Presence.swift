@@ -31,6 +31,15 @@ extension Device {
     public static let presenceRetention: TimeInterval = 30 * 86_400
     public static let presenceLimit = 500
 
+    /// Where the current online / offline run began, if the history shows the device changing state at all.
+    /// `online` is the state it changed to; `date` is the first completed scan that saw it.
+    public var lastPresenceChange: PresenceSample? {
+        guard let last = presence.last else { return nil }
+        var start = presence.count - 1
+        while start > 0, presence[start - 1].online == last.online { start -= 1 }
+        return start > 0 ? presence[start] : nil
+    }
+
     /// Appends the verdict of a completed scan.
     public mutating func recordPresence(online: Bool, at now: Date = Date()) {
         let sample = PresenceSample(date: now, online: online)
