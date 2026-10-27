@@ -17,6 +17,16 @@ struct SidebarCounts {
     var kinds: [DeviceKind: Int] = [:]
 }
 
+/// A change worth showing under "最近动态" in the network overview.
+struct DeviceEvent: Identifiable {
+    enum Kind { case joined, online, offline }
+    let deviceID: String
+    let kind: Kind
+    let date: Date
+
+    var id: String { "\(deviceID)|\(kind)|\(date.timeIntervalSince1970)" }
+}
+
 /// Central app state: the selected network, its device inventory and scan / port-scan activity.
 @MainActor
 @Observable
@@ -52,6 +62,10 @@ final class AppModel {
     var searchText = ""
     var sortOrder: [KeyPathComparator<Device>] = [KeyPathComparator(\Device.sortableIP)]
     var showInspector = true
+    /// Visible columns, order and widths of the device table; persisted so the View ▸ 列 menu can change them.
+    var columnCustomization: TableColumnCustomization<Device> = AppModel.loadColumns() {
+        didSet { AppModel.saveColumns(columnCustomization) }
+    }
     var viewMode: ViewMode = ViewMode(rawValue: UserDefaults.standard.string(forKey: Prefs.viewMode) ?? "") ?? .table {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: Prefs.viewMode) }
     }
@@ -91,6 +105,11 @@ final class AppModel {
     @ObservationIgnored private var pathMonitor: NWPathMonitor?
     @ObservationIgnored private var pathChangeTask: Task<Void, Never>?
     @ObservationIgnored private var bootstrapped = false
+    /// Completed scans since this network was loaded; the first one only re-establishes who is online.
+    @ObservationIgnored private var completedScans = 0
+    /// Stored with the inventory so the network can be recognised again (see `NetworkMatcher`).
+    @ObservationIgnored private var networkSubnet: String?
+    @ObservationIgnored private var knownGatewayMACs: Set<String> = []
 
     private init() {}
 
@@ -135,15 +154,17 @@ final class AppModel {
             devices = []
             return
         }
-        let key = await NetworkIdentity.key(for: iface)
-        if key != networkKey {
+        // Flush the current network first, so a merge of stores sees its latest state.
+        saveNow()
+        if let resolution = await NetworkIdentity.resolve(for: iface, currentKey: networkKey) {
             stopScan()
-            saveNow()
-            networkKey = key
-            let stored = await Task.detached(priority: .userInitiated) { DeviceStore.load(key: key) }.value
-            inventory = DeviceInventory(devices: stored)
+            networkKey = resolution.key
+            networkSubnet = resolution.subnet
+            knownGatewayMACs = resolution.gatewayMACs
+            inventory = DeviceInventory(devices: resolution.devices)
             selection = []
             sessionNewIDs = []
+            completedScans = 0
             publish()
         }
         if scan { startScan() }
@@ -190,11 +211,12 @@ final class AppModel {
         phase = .discovery
         let options = Prefs.scanOptions()
         let knownBefore = Set(inventory.devices.keys)
+        let onlineBefore = inventory.devices.mapValues(\.isOnline)
         scanTask = Task {
             for await event in engine.scan(iface, options: options) {
                 handle(event)
             }
-            scanFinished(knownBefore: knownBefore)
+            scanFinished(knownBefore: knownBefore, onlineBefore: onlineBefore, cancelled: Task.isCancelled)
         }
     }
 
@@ -223,10 +245,22 @@ final class AppModel {
         scheduleFlush()
     }
 
-    private func scanFinished(knownBefore: Set<String>) {
+    private func scanFinished(knownBefore: Set<String>, onlineBefore: [String: Bool], cancelled: Bool) {
         isScanning = false
         phase = nil
         progress = 1
+        // Watched devices that went online or offline. Skipped for the first scan after loading a network
+        // (stored devices start out offline) and for scans that were cut short.
+        if !cancelled, completedScans > 0 {
+            let changed = inventory.devices.values.filter { d in
+                d.isWatched && onlineBefore[d.id].map { $0 != d.isOnline } == true
+            }
+            if !changed.isEmpty { Notifier.notifyPresenceChanges(Array(changed)) }
+        }
+        if !cancelled {
+            if completedScans == 0 { reconcileStores() }
+            completedScans += 1
+        }
         let created = Set(inventory.devices.keys).subtracting(knownBefore)
         let newOnline = created.compactMap { inventory.devices[$0] }.filter(\.isOnline)
         // The first scan of a network finds everything – that is not news. Only devices that join a network we
@@ -239,13 +273,13 @@ final class AppModel {
         scheduleSave()
     }
 
+    /// A stopped scan says nothing about the devices it had not reached yet, so they keep their last state.
     func stopScan() {
         scanTask?.cancel()
         scanTask = nil
         if isScanning {
             isScanning = false
             phase = nil
-            inventory.finishScan(cancelled: true)
             publish()
         }
     }
@@ -306,7 +340,8 @@ final class AppModel {
     func clearResults() {
         stopScan()
         for d in inventory.allDevices {
-            if d.customName == nil && d.notes.isEmpty && !d.isFavorite && d.customKind == nil && d.customURL == nil {
+            if d.customName == nil && d.notes.isEmpty && !d.isFavorite && !d.isWatched && d.customKind == nil
+                && d.customURL == nil {
                 inventory.remove(d.id)
             } else {
                 inventory.update(d.id) { $0.isOnline = false }
@@ -348,14 +383,40 @@ final class AppModel {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled, let key = networkKey else { return }
             let snapshot = inventory.allDevices
-            await Task.detached(priority: .utility) { DeviceStore.save(key: key, devices: snapshot) }.value
+            let subnet = networkSubnet
+            let gateways = currentGatewayMACs()
+            await Task.detached(priority: .utility) {
+                DeviceStore.save(key: key, devices: snapshot, subnet: subnet, gatewayMACs: gateways)
+            }.value
         }
     }
 
     func saveNow() {
         saveTask?.cancel()
         guard let key = networkKey else { return }
-        DeviceStore.save(key: key, devices: inventory.allDevices)
+        DeviceStore.save(key: key, devices: inventory.allDevices, subnet: networkSubnet, gatewayMACs: currentGatewayMACs())
+    }
+
+    /// Folds in other stores of this network that only the full device list of a scan reveals as the same LAN
+    /// (the gateway MAC changed, or the ARP cache was nearly empty at launch).
+    private func reconcileStores() {
+        guard let key = networkKey, let iface = interface, let subnet = networkSubnet else { return }
+        let visible = Set(inventory.allDevices.filter(\.isOnline).compactMap(\.mac))
+        let gatewayMAC = inventory.allDevices.first(where: \.isGateway)?.mac
+        Task {
+            let stray = await NetworkIdentity.strayStores(of: key, interface: iface, subnet: subnet, visible: visible,
+                                                          gatewayMAC: gatewayMAC)
+            guard !stray.keys.isEmpty, networkKey == key else { return }
+            inventory.absorb(stray.devices)
+            knownGatewayMACs.formUnion(stray.gatewayMACs)
+            publish()
+            saveNow()
+        }
+    }
+
+    /// Gateway MACs this network has used, including the one the latest scan found.
+    private func currentGatewayMACs() -> Set<String> {
+        knownGatewayMACs.union(inventory.allDevices.filter(\.isGateway).compactMap { $0.mac?.description })
     }
 
     // MARK: - Derived lists
@@ -401,15 +462,29 @@ final class AppModel {
         return d.firstSeen > baseline.addingTimeInterval(15 * 60)
     }
 
-    /// One-line status for the window subtitle.
-    var statusSummary: String {
-        let range = selectedRange.map { " · 范围 \($0.title)" } ?? ""
-        if isScanning { return "正在扫描 \(Int(progress * 100))%\(range)" }
-        let c = counts
-        var parts = ["\(c.online) 台在线", "共 \(c.all) 台"]
-        if c.recent > 0 { parts.append("\(c.recent) 台新设备") }
-        if isLive { parts.insert("实时监控", at: 0) }
-        return parts.joined(separator: " · ") + range
+    /// Window title: the group of devices the list shows.
+    var listTitle: String {
+        switch sidebar ?? .all {
+        case .all: "全部设备"
+        case .online: "在线设备"
+        case .offline: "离线设备"
+        case .recent: "新设备"
+        case .favorites: "收藏"
+        case .kind(let kind): kind.title
+        }
+    }
+
+    /// Window subtitle: what the list contains right now (or the scan's progress / the search result).
+    var listSummary: String {
+        guard interface != nil else { return "" }
+        if isScanning { return "正在扫描 \(Int(progress * 100))%" }
+        let list = visibleDevices
+        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty { return "找到 \(list.count) 台" }
+        let online = list.filter(\.isOnline).count
+        var text = online == list.count ? "\(list.count) 台在线" : "\(list.count) 台 · \(online) 台在线"
+        if isLive { text += " · 实时监控" }
+        if let range = selectedRange { text += " · 范围 \(range.title)" }
+        return text
     }
 
     func requestRename(_ id: String) {
@@ -439,6 +514,67 @@ final class AppModel {
         for id in ids { inventory.update(id) { $0.isFavorite = makeFavorite } }
         publish()
         scheduleSave()
+    }
+
+    /// Turns online / offline notifications on for all `ids` (or off, when they are all on already).
+    func toggleWatch(_ ids: Set<String>) {
+        let watch = ids.contains { !(inventory.devices[$0]?.isWatched ?? false) }
+        for id in ids { inventory.update(id) { $0.isWatched = watch } }
+        if watch { Notifier.requestAuthorization() }
+        publish()
+        scheduleSave()
+    }
+
+    /// Newest first: devices that joined after the network's first scan, and the latest online / offline change
+    /// that completed scans recorded for each device.
+    func recentEvents(limit: Int = 8) -> [DeviceEvent] {
+        var events: [DeviceEvent] = []
+        for d in devices {
+            var latest: DeviceEvent?
+            if isRecent(d) { latest = DeviceEvent(deviceID: d.id, kind: .joined, date: d.firstSeen) }
+            if let change = d.lastPresenceChange {
+                // A device goes offline some time after it was last seen; the first scan that missed it may come
+                // much later (the app was not running), so date the change by when it was last online.
+                let date = change.online ? change.date : min(change.date, d.lastSeen)
+                if date > (latest?.date ?? .distantPast) {
+                    latest = DeviceEvent(deviceID: d.id, kind: change.online ? .online : .offline, date: date)
+                }
+            }
+            if let latest { events.append(latest) }
+        }
+        return Array(events.sorted { $0.date > $1.date }.prefix(limit))
+    }
+
+    // MARK: - Table columns
+
+    func isColumnVisible(_ column: DeviceColumn) -> Bool {
+        switch columnCustomization[visibility: column.id] {
+        case .visible: true
+        case .hidden: false
+        default: column.visibleByDefault
+        }
+    }
+
+    func setColumn(_ column: DeviceColumn, visible: Bool) {
+        columnCustomization[visibility: column.id] = visible ? .visible : .hidden
+    }
+
+    func resetColumns() {
+        columnCustomization = TableColumnCustomization()
+    }
+
+    private static let columnsKey = "deviceTableColumns.v3"
+
+    private static func loadColumns() -> TableColumnCustomization<Device> {
+        guard let data = UserDefaults.standard.data(forKey: columnsKey),
+              let stored = try? JSONDecoder().decode(TableColumnCustomization<Device>.self, from: data) else {
+            return TableColumnCustomization()
+        }
+        return stored
+    }
+
+    private static func saveColumns(_ columns: TableColumnCustomization<Device>) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(columns), forKey: columnsKey)
     }
 
     // MARK: - Port scanning
@@ -523,12 +659,14 @@ final class AppModel {
 
     func exportCustomNames() -> [CustomNameRecord] {
         inventory.allDevices.compactMap { d in
-            guard d.customName != nil || !d.notes.isEmpty || d.customKind != nil || d.customURL != nil || d.isFavorite else {
+            guard d.customName != nil || !d.notes.isEmpty || d.customKind != nil || d.customURL != nil || d.isFavorite
+                || d.isWatched else {
                 return nil
             }
             return CustomNameRecord(mac: d.mac?.description, ip: d.ipv4?.description, name: d.customName,
                                     notes: d.notes.isEmpty ? nil : d.notes, kind: d.customKind?.rawValue,
-                                    url: d.customURL, favorite: d.isFavorite ? true : nil)
+                                    url: d.customURL, favorite: d.isFavorite ? true : nil,
+                                    watched: d.isWatched ? true : nil)
         }
     }
 
@@ -548,6 +686,7 @@ final class AppModel {
                 if overwrite || d.notes.isEmpty { d.notes = r.notes ?? d.notes }
                 if let k = r.kind.flatMap(DeviceKind.init(rawValue:)), overwrite || d.customKind == nil { d.customKind = k }
                 if r.favorite == true { d.isFavorite = true }
+                if r.watched == true { d.isWatched = true }
             }
             count += 1
         }

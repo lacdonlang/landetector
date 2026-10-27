@@ -20,6 +20,7 @@
 		9907CD66760D22BDD3543691 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422DDD93933097F2695A473F /* SidebarView.swift */; };
 		A26696A0151CF5459E41EFBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D343F328D29D8867F69D95F0 /* Assets.xcassets */; };
 		A49260FAFDBA6D3F678B43C9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E053E6DDD63A91D9A232D3 /* ContentView.swift */; };
+		A645B1599CA6782B309ED631 /* NetworkOverview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93F1EC8C01280819F45AACBC /* NetworkOverview.swift */; };
 		B767E224C375092F6BD57BA7 /* PortScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB9CBFC5CBF60145359EC49 /* PortScanSheet.swift */; };
 		BBB7A8CB1F225BEC5A35933F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB717B90844BB6BA459897C7 /* MenuBarView.swift */; };
 		D4887864C9FC46D73B406EDB /* DeviceTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640B231D058F40D0107149F5 /* DeviceTableView.swift */; };
@@ -38,6 +39,7 @@
 		5ADF1FD26E5DED455C8C7678 /* DeviceActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActions.swift; sourceTree = "<group>"; };
 		640B231D058F40D0107149F5 /* DeviceTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTableView.swift; sourceTree = "<group>"; };
 		7CB9CBFC5CBF60145359EC49 /* PortScanSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortScanSheet.swift; sourceTree = "<group>"; };
+		93F1EC8C01280819F45AACBC /* NetworkOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkOverview.swift; sourceTree = "<group>"; };
 		94C7804429E8760A638C38F9 /* DeviceInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInspector.swift; sourceTree = "<group>"; };
 		A7CC8181D8DF21498644C634 /* DeviceGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGridView.swift; sourceTree = "<group>"; };
 		AB717B90844BB6BA459897C7 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				94C7804429E8760A638C38F9 /* DeviceInspector.swift */,
 				640B231D058F40D0107149F5 /* DeviceTableView.swift */,
 				AB717B90844BB6BA459897C7 /* MenuBarView.swift */,
+				93F1EC8C01280819F45AACBC /* NetworkOverview.swift */,
 				7CB9CBFC5CBF60145359EC49 /* PortScanSheet.swift */,
 				FEFB8DEE49E5A341E90309C4 /* PresenceTimeline.swift */,
 				2A2F1B044783E4D5FB03D96A /* SettingsView.swift */,
@@ -231,6 +234,7 @@
 				D4887864C9FC46D73B406EDB /* DeviceTableView.swift in Sources */,
 				624F7425F2CDF6794F28C665 /* LanDetectorApp.swift in Sources */,
 				BBB7A8CB1F225BEC5A35933F /* MenuBarView.swift in Sources */,
+				A645B1599CA6782B309ED631 /* NetworkOverview.swift in Sources */,
 				B767E224C375092F6BD57BA7 /* PortScanSheet.swift in Sources */,
 				31FC3A2B54EDFFE05B324576 /* Preferences.swift in Sources */,
 				7F02338CAE48572047E51FAF /* PresenceTimeline.swift in Sources */,

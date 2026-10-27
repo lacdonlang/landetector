@@ -1,6 +1,10 @@
+import AppKit
 import LanDetectorKit
 import SwiftUI
 
+/// Window layout. Each area owns the controls that act on it, placed right above it:
+/// sidebar – which network and group; list – scanning, view mode and the search field (it filters the list);
+/// inspector – its own toggle.
 struct ContentView: View {
     private let model = AppModel.shared
     @State private var columnVisibility = NavigationSplitViewVisibility.all
@@ -9,35 +13,47 @@ struct ContentView: View {
         @Bindable var model = model
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 340)
+                .navigationSplitViewColumnWidth(min: 230, ideal: 250, max: 320)
         } detail: {
             DeviceListContainer()
-                .inspector(isPresented: $model.showInspector) {
-                    DeviceInspector()
-                        .inspectorColumnWidth(min: 300, ideal: 350, max: 520)
+                .navigationTitle(model.listTitle)
+                .navigationSubtitle(model.listSummary)
+                .toolbar { ListToolbar() }
+        }
+        // Attached outside the split view, the inspector gets a toolbar section of its own, so nothing of the
+        // list's ends up above it.
+        .inspector(isPresented: $model.showInspector) {
+            DeviceInspector()
+                .inspectorColumnWidth(min: 300, ideal: 340, max: 460)
+                .toolbar {
+                    // Inspector toolbar items stay in the toolbar while it is hidden, hence the condition.
+                    // Trailing, where 显示检查器 sits while the inspector is closed.
+                    if model.showInspector {
+                        ToolbarSpacer(.flexible, placement: .primaryAction)
+                        ToolbarItem(placement: .primaryAction) {
+                            Button {
+                                model.showInspector = false
+                            } label: {
+                                Label("隐藏检查器", systemImage: "sidebar.trailing")
+                            }
+                            .help("隐藏检查器 (⌥⌘I)")
+                        }
+                    }
                 }
         }
-        .searchable(text: $model.searchText, placement: .toolbar, prompt: "搜索名称、IP、MAC、厂商、端口")
-        .toolbar { MainToolbar() }
         .sheet(isPresented: $model.showPortScanSheet) {
             PortScanSheet()
         }
         .environment(\.textScale, model.textScale)
-        .navigationTitle(model.interface?.displayName ?? "LanDetector")
-        // Counts and scan state live here (like Mail's message count) instead of a header that would
-        // repeat the sidebar badges and eat vertical space in the list.
-        .navigationSubtitle(model.interface == nil ? "" : model.statusSummary)
     }
 }
 
-struct MainToolbar: ToolbarContent {
+/// Actions on the device list, shown above it.
+struct ListToolbar: ToolbarContent {
     private let model = AppModel.shared
 
     var body: some ToolbarContent {
         @Bindable var model = model
-        ToolbarItem(placement: .navigation) {
-            InterfaceMenu()
-        }
         ToolbarItemGroup(placement: .primaryAction) {
             Button {
                 model.isScanning ? model.stopScan() : model.startScan()
@@ -58,71 +74,36 @@ struct MainToolbar: ToolbarContent {
             Button {
                 model.showPortScanSheet = true
             } label: {
-                Label("端口扫描", systemImage: "door.left.hand.open")
+                Label("端口扫描", systemImage: "network.badge.shield.half.filled")
             }
             .help("扫描开放端口 (⌥⌘P)")
             .disabled(model.devices.isEmpty)
         }
-        ToolbarItem {
+        ToolbarItem(placement: .primaryAction) {
             Picker("视图", selection: $model.viewMode) {
                 Label("列表", systemImage: "list.bullet").tag(ViewMode.table)
                 Label("卡片", systemImage: "square.grid.2x2").tag(ViewMode.grid)
             }
             .pickerStyle(.segmented)
-            .help("切换列表 / 卡片视图")
+            .help("切换列表 / 卡片视图 (⌘1 / ⌘2)")
         }
-        ToolbarItem {
-            Button {
-                model.showInspector.toggle()
-            } label: {
-                Label("检查器", systemImage: "sidebar.trailing")
-            }
-            .help("显示 / 隐藏检查器 (⌥⌘I)")
+        // Filters this list; the placeholder names the list it searches.
+        ToolbarItem(placement: .primaryAction) {
+            ToolbarSearchField(text: $model.searchText, prompt: "搜索" + model.listTitle)
+                .frame(width: 190)
         }
-    }
-}
-
-struct InterfaceMenu: View {
-    private let model = AppModel.shared
-    @Environment(\.openSettings) private var openSettings
-
-    var body: some View {
-        Menu {
-            Section("网络接口") {
-                ForEach(model.interfaces) { iface in
-                    Button {
-                        model.selectInterface(iface.name)
-                    } label: {
-                        Label("\(iface.displayName) (\(iface.name)) · \(iface.cidr)", systemImage: iface.kind.symbol)
-                    }
+        .sharedBackgroundVisibility(.hidden)
+        // While the inspector is open its own toolbar carries the toggle, right above it.
+        if !model.showInspector {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    model.showInspector = true
+                } label: {
+                    Label("显示检查器", systemImage: "sidebar.trailing")
                 }
+                .help("显示检查器 (⌥⌘I)")
             }
-            Section("扫描范围") {
-                Toggle(isOn: rangeBinding(nil)) {
-                    Text("整个子网" + (model.interface.map { " · \($0.cidr)" } ?? ""))
-                }
-                ForEach(model.rangePresets) { preset in
-                    Toggle(isOn: rangeBinding(preset.id)) {
-                        Text(preset.name.isEmpty ? preset.range : "\(preset.name) · \(preset.range)")
-                    }
-                    .disabled(preset.ipv4Range == nil)
-                }
-                Button("编辑范围…") {
-                    UserDefaults.standard.set(SettingsTab.scan.rawValue, forKey: Prefs.settingsTab)
-                    openSettings()
-                }
-            }
-            Divider()
-            Button("刷新接口") { model.refreshInterfaces() }
-        } label: {
-            Label(model.interface?.displayName ?? "无网络", systemImage: model.interface?.kind.symbol ?? "network.slash")
         }
-        .help("选择要扫描的网络接口与范围")
-    }
-
-    /// Checked for the active range; choosing an entry (even the checked one) rescans.
-    private func rangeBinding(_ id: UUID?) -> Binding<Bool> {
-        Binding(get: { model.selectedRangeID == id }, set: { _ in model.selectRange(id) })
     }
 }
 
@@ -197,7 +178,15 @@ struct DeviceListContent: View {
                                        description: Text("请连接 Wi-Fi 或以太网后重试。"))
             } else if devices.isEmpty {
                 if !model.searchText.isEmpty {
-                    ContentUnavailableView.search(text: model.searchText)
+                    ContentUnavailableView {
+                        Label("没有找到“\(model.searchText)”", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("在“\(model.listTitle)”中没有匹配的设备。")
+                    } actions: {
+                        if model.sidebar != .all {
+                            Button("在全部设备中搜索") { model.sidebar = .all }
+                        }
+                    }
                 } else if model.isScanning {
                     ProgressView("正在发现设备…")
                         .controlSize(.large)
@@ -206,7 +195,7 @@ struct DeviceListContent: View {
                     ContentUnavailableView {
                         Label("暂无设备", systemImage: "dot.radiowaves.left.and.right")
                     } description: {
-                        Text(model.devices.isEmpty ? "点击扫描以发现局域网中的设备。" : "此分组中没有设备。")
+                        Text(model.devices.isEmpty ? "点击扫描以发现局域网中的设备。" : "“\(model.listTitle)”中没有设备。")
                     } actions: {
                         if model.devices.isEmpty {
                             Button("扫描网络") { model.startScan() }
@@ -223,5 +212,50 @@ struct DeviceListContent: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// AppKit's toolbar search field as an ordinary toolbar item, so it can sit with the list's controls:
+/// `.searchable` always puts its field at the window's trailing edge, above the inspector.
+struct ToolbarSearchField: NSViewRepresentable {
+    @Binding var text: String
+    let prompt: String
+
+    private static weak var current: NSSearchField?
+
+    /// Edit ▸ 查找设备 (⌘F).
+    static func focus() {
+        guard let field = current else { return }
+        field.window?.makeFirstResponder(field)
+    }
+
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        // Same metrics as the field of NSSearchToolbarItem.
+        field.controlSize = .extraLarge
+        field.font = .systemFont(ofSize: 13)
+        field.bezelStyle = .roundedBezel
+        field.drawsBackground = false
+        field.sendsSearchStringImmediately = true
+        field.target = context.coordinator
+        field.action = #selector(Coordinator.search(_:))
+        field.setAccessibilityLabel("搜索设备")
+        Self.current = field
+        return field
+    }
+
+    func updateNSView(_ field: NSSearchField, context: Context) {
+        context.coordinator.text = $text
+        if field.stringValue != text { field.stringValue = text }
+        if field.placeholderString != prompt { field.placeholderString = prompt }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    @MainActor final class Coordinator: NSObject {
+        var text: Binding<String>
+        init(text: Binding<String>) { self.text = text }
+
+        @objc func search(_ sender: NSSearchField) { text.wrappedValue = sender.stringValue }
     }
 }

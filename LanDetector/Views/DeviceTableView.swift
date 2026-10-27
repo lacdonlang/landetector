@@ -27,15 +27,43 @@ extension Device {
     }
 }
 
+/// A column that the View ▸ 列 menu can show or hide.
+struct DeviceColumn: Identifiable {
+    let id: String
+    let title: String
+    let visibleByDefault: Bool
+
+    static let toggleable: [DeviceColumn] = [
+        .init(id: "ip", title: "IP 地址", visibleByDefault: true),
+        .init(id: "mac", title: "MAC 地址", visibleByDefault: true),
+        .init(id: "vendor", title: "厂商", visibleByDefault: true),
+        .init(id: "identification", title: "识别", visibleByDefault: true),
+        .init(id: "kind", title: "类型", visibleByDefault: false),
+        .init(id: "os", title: "系统", visibleByDefault: false),
+        .init(id: "hostname", title: "主机名", visibleByDefault: false),
+        .init(id: "dns", title: "DNS 名称", visibleByDefault: false),
+        .init(id: "mdns", title: "mDNS 名称", visibleByDefault: false),
+        .init(id: "smb", title: "SMB 名称", visibleByDefault: false),
+        .init(id: "smbGroup", title: "SMB 工作组", visibleByDefault: false),
+        .init(id: "ipv6Local", title: "IPv6 本地", visibleByDefault: false),
+        .init(id: "ipv6Global", title: "IPv6 全局", visibleByDefault: false),
+        .init(id: "ports", title: "开放端口", visibleByDefault: false),
+        .init(id: "latency", title: "延迟", visibleByDefault: true),
+        .init(id: "lastSeen", title: "最后在线", visibleByDefault: true),
+        .init(id: "firstSeen", title: "首次发现", visibleByDefault: false),
+        .init(id: "notes", title: "备注", visibleByDefault: false),
+    ]
+}
+
 struct DeviceTableView: View {
     private let model = AppModel.shared
     @Environment(\.textScale) private var scale
-    @SceneStorage("DeviceTableColumns.v2") private var columns: TableColumnCustomization<Device>
     let devices: [Device]
 
     var body: some View {
         @Bindable var model = model
-        Table(devices, selection: $model.selection, sortOrder: $model.sortOrder, columnCustomization: $columns) {
+        Table(devices, selection: $model.selection, sortOrder: $model.sortOrder,
+              columnCustomization: $model.columnCustomization) {
             Group {
                 TableColumn("", value: \Device.onlineRank) { d in
                     StatusDot(isOnline: d.isOnline)
@@ -47,32 +75,32 @@ struct DeviceTableView: View {
                 TableColumn("名称", value: \Device.sortName) { d in
                     NameCell(device: d)
                 }
-                .width(min: 160, ideal: 220)
+                .width(min: 150, ideal: 210)
                 .customizationID("name")
                 .disabledCustomizationBehavior(.visibility)
 
                 TableColumn("IP 地址", value: \Device.sortableIP) { d in
                     mono(d.ipv4?.description ?? d.ipv6.first?.description)
                 }
-                .width(min: 100, ideal: 116)
+                .width(min: 112 * scale, ideal: 118 * scale)
                 .customizationID("ip")
 
                 TableColumn("MAC 地址", value: \Device.sortMAC) { d in
-                    HStack(spacing: 4) {
-                        mono(d.mac?.description)
-                        if d.hasPrivateMAC {
-                            Image(systemName: "eye.slash")
-                                .imageScale(.small)
-                                .foregroundStyle(.secondary)
-                                .help("私有（随机）MAC 地址")
-                        }
-                    }
+                    mono(d.mac?.description)
                 }
-                .width(min: 130, ideal: 148)
+                .width(min: 126 * scale, ideal: 132 * scale)
                 .customizationID("mac")
 
                 TableColumn("厂商", value: \Device.sortVendor) { d in
-                    text(d.vendor).help(d.vendorFull ?? "")
+                    if d.vendor == nil && d.hasPrivateMAC {
+                        // Says why there is no vendor, instead of a bare dash.
+                        Text("私有地址")
+                            .font(.system(size: 12 * scale))
+                            .foregroundStyle(.secondary)
+                            .help("随机（私有）MAC 地址，不含厂商信息")
+                    } else {
+                        text(d.vendor).help(d.vendorFull ?? "")
+                    }
                 }
                 .width(min: 60, ideal: 100)
                 .customizationID("vendor")
@@ -107,6 +135,7 @@ struct DeviceTableView: View {
                 TableColumn("主机名", value: \Device.sortHostname) { d in text(d.hostname) }
                     .width(min: 80, ideal: 150)
                     .customizationID("hostname")
+                    .defaultVisibility(.hidden)
 
                 TableColumn("DNS 名称", value: \Device.sortDNS) { d in text(d.dnsName) }
                     .customizationID("dns")
@@ -143,6 +172,7 @@ struct DeviceTableView: View {
                 }
                 .width(min: 60, ideal: 110)
                 .customizationID("ports")
+                .defaultVisibility(.hidden)
 
                 TableColumn("延迟", value: \Device.sortLatency) { d in
                     LatencyText(latency: d.isOnline ? d.latency : nil)
@@ -156,7 +186,7 @@ struct DeviceTableView: View {
                         .font(.system(size: 12 * scale))
                         .foregroundStyle(.secondary)
                 }
-                .width(min: 56, ideal: 76)
+                .width(min: 50, ideal: 64)
                 .customizationID("lastSeen")
 
                 TableColumn("首次发现", value: \Device.firstSeen) { d in
@@ -227,6 +257,13 @@ struct NameCell: View {
                     .foregroundStyle(.yellow)
                     .accessibilityLabel("已收藏")
             }
+            if device.isWatched {
+                Image(systemName: "bell.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+                    .help("已开启上下线提醒")
+                    .accessibilityLabel("已开启上下线提醒")
+            }
         }
         .opacity(device.isOnline ? 1 : 0.6)
         .help(device.subtitle)
@@ -276,12 +313,15 @@ struct DeviceContextMenu: View {
             }
         }
         if !devices.isEmpty {
-            Button("扫描端口…", systemImage: "door.left.hand.open") {
+            Button("扫描端口…", systemImage: "network.badge.shield.half.filled") {
                 model.selection = ids
                 model.showPortScanSheet = true
             }
             Button(devices.allSatisfy(\.isFavorite) ? "取消收藏" : "收藏", systemImage: "star") {
                 model.toggleFavorite(ids)
+            }
+            Button(devices.allSatisfy(\.isWatched) ? "关闭上下线提醒" : "开启上下线提醒", systemImage: "bell") {
+                model.toggleWatch(ids)
             }
             Divider()
             Menu("导出所选") {

@@ -1,6 +1,7 @@
 import LanDetectorKit
 import SwiftUI
 
+/// Sidebar: which network is shown, and which group of its devices.
 struct SidebarView: View {
     private let model = AppModel.shared
 
@@ -9,8 +10,8 @@ struct SidebarView: View {
         let counts = model.counts
         List(selection: $model.sidebar) {
             Section {
-                NetworkCard()
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+                NetworkHeader()
+                    .listRowInsets(EdgeInsets(top: 6, leading: 4, bottom: 10, trailing: 4))
                     .selectionDisabled()
             }
 
@@ -47,71 +48,111 @@ struct SidebarView: View {
     }
 }
 
-/// Summary of the selected interface and Internet connection.
-struct NetworkCard: View {
+/// The network being shown: name, subnet and one status line. Clicking it switches interface or scan range;
+/// the full network details live in the inspector's overview.
+struct NetworkHeader: View {
     private let model = AppModel.shared
 
     var body: some View {
         if let iface = model.interface {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Image(systemName: iface.kind.symbol)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(LinearGradient(colors: [.accentColor.opacity(0.8), .accentColor], startPoint: .top,
-                                                   endPoint: .bottom),
-                                    in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(iface.displayName).font(.headline)
-                        Text("\(iface.name) · \(iface.cidr)")
-                            .font(.caption.monospaced())
+            Menu {
+                NetworkMenuContent()
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        Image(systemName: iface.kind.symbol)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(iface.displayName)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Text(verbatim: model.selectedRange?.range
+                                 ?? NetworkMatcher.subnetKey(iface.ipv4, netmask: iface.netmask))
+                                .font(.subheadline)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
-                    Spacer(minLength: 0)
-                    if model.isLive {
-                        Image(systemName: "dot.radiowaves.left.and.right")
-                            .foregroundStyle(.green)
-                            .symbolEffect(.variableColor.iterative)
-                            .help("实时监控中")
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(statusColor)
+                            .frame(width: 7, height: 7)
+                        Text(statusText)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
+                    .padding(.leading, 2)
                 }
-                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                    item("网关", iface.gateway?.description)
-                    item("本机 MAC", iface.mac?.description)
-                    item("DNS", model.dnsServers.prefix(2).joined(separator: ", "))
-                    if let pub = model.publicIP {
-                        item("公网 IPv4", pub.ipv4.map { "\(pub.flag ?? "") \($0)" })
-                        item("公网 IPv6", pub.ipv6)
-                        item("运营商", pub.isp)
-                    }
-                    item("上次扫描", lastScanText)
-                }
-                .font(.caption)
+                .contentShape(Rectangle())
             }
-            .padding(12)
-            .glassEffect(.regular, in: .rect(cornerRadius: 14))
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .help("切换网络接口或扫描范围")
         }
     }
 
-    private var lastScanText: String? {
-        if model.isScanning { return "正在扫描…" }
-        guard let date = model.lastScanDate else { return nil }
-        let time = date.formatted(date: .omitted, time: .shortened)
-        return model.lastScan.map { String(format: "%@ · 用时 %.1f 秒", time, $0.duration) } ?? time
+    private var statusColor: Color {
+        if model.isScanning { return .accentColor }
+        return model.isLive ? .green : .secondary.opacity(0.5)
     }
 
-    @ViewBuilder
-    private func item(_ label: String, _ value: String?) -> some View {
-        if let value, !value.isEmpty {
-            GridRow {
-                Text(label).foregroundStyle(.secondary)
-                Text(value)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
+    private var statusText: String {
+        let online = model.counts.online
+        if model.isScanning { return "正在扫描 \(Int(model.progress * 100))%" }
+        if model.isLive { return "实时监控中 · \(online) 台在线" }
+        guard let date = model.lastScanDate else { return "尚未扫描" }
+        return "\(online) 台在线 · \(date.formatted(date: .omitted, time: .shortened)) 扫描"
+    }
+}
+
+/// Interfaces, scan ranges and network actions – shown by the sidebar's network header.
+struct NetworkMenuContent: View {
+    private let model = AppModel.shared
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Section("网络接口") {
+            ForEach(model.interfaces) { iface in
+                Toggle(isOn: Binding(get: { model.interface?.name == iface.name },
+                                     set: { _ in model.selectInterface(iface.name) })) {
+                    Label("\(iface.displayName)（\(iface.name)）· \(iface.cidr)", systemImage: iface.kind.symbol)
+                }
             }
         }
+        Section("扫描范围") {
+            Toggle(isOn: rangeBinding(nil)) {
+                Text("整个子网" + (model.interface.map { " · " + NetworkMatcher.subnetKey($0.ipv4, netmask: $0.netmask) } ?? ""))
+            }
+            ForEach(model.rangePresets) { preset in
+                Toggle(isOn: rangeBinding(preset.id)) {
+                    Text(preset.name.isEmpty ? preset.range : "\(preset.name) · \(preset.range)")
+                }
+                .disabled(preset.ipv4Range == nil)
+            }
+            Button("编辑范围…") {
+                UserDefaults.standard.set(SettingsTab.scan.rawValue, forKey: Prefs.settingsTab)
+                openSettings()
+            }
+        }
+        Divider()
+        Button("网络详情") {
+            model.selection = []
+            model.showInspector = true
+        }
+        Button("刷新网络接口") { model.refreshInterfaces() }
+    }
+
+    /// Checked for the active range; choosing an entry (even the checked one) rescans.
+    private func rangeBinding(_ id: UUID?) -> Binding<Bool> {
+        Binding(get: { model.selectedRangeID == id }, set: { _ in model.selectRange(id) })
     }
 }

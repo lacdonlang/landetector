@@ -12,11 +12,15 @@ struct DeviceInspector: View {
                     .id(device.id)
             } else if selected.count > 1 {
                 MultiSelectionSummary(devices: selected)
+            } else if model.interface != nil {
+                NetworkOverview()
             } else {
-                ContentUnavailableView("未选择设备", systemImage: "cursorarrow.click.2",
-                                       description: Text("在列表中选择设备以查看详细信息。"))
+                ContentUnavailableView("没有可用的网络", systemImage: "network.slash")
             }
         }
+        // The column keeps its width whatever is selected: content that reported its natural width (long IPv6
+        // addresses, host names, TXT records) used to resize the inspector – and with it the list – on every click.
+        .frame(minWidth: 0, idealWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -271,15 +275,26 @@ private struct DeviceDetail: View {
                 }
             }
             Spacer(minLength: 0)
-            Button {
-                model.toggleFavorite([device.id])
-            } label: {
-                Image(systemName: device.isFavorite ? "star.fill" : "star")
-                    .font(.title3)
-                    .foregroundStyle(device.isFavorite ? .yellow : .secondary)
+            HStack(spacing: 10) {
+                Button {
+                    model.toggleWatch([device.id])
+                } label: {
+                    Image(systemName: device.isWatched ? "bell.fill" : "bell")
+                        .font(.title3)
+                        .foregroundStyle(device.isWatched ? Color.orange : Color.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(device.isWatched ? "关闭上下线提醒" : "开启上下线提醒：扫描发现它上线或离线时通知你")
+                Button {
+                    model.toggleFavorite([device.id])
+                } label: {
+                    Image(systemName: device.isFavorite ? "star.fill" : "star")
+                        .font(.title3)
+                        .foregroundStyle(device.isFavorite ? .yellow : .secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(device.isFavorite ? "取消收藏" : "收藏")
             }
-            .buttonStyle(.borderless)
-            .help(device.isFavorite ? "取消收藏" : "收藏")
         }
         .padding(.vertical, 4)
     }
@@ -401,16 +416,15 @@ private struct PortRow: View {
 
     var body: some View {
         let service = PortDatabase.shared.service(for: port)
-        HStack {
+        HStack(alignment: .firstTextBaseline) {
             Text(verbatim: String(port))
                 .font(.body.monospacedDigit().weight(.medium))
                 .frame(width: 54, alignment: .leading)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(service?.name ?? "未知服务")
-                Text(service?.description ?? "")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // One line for the service (its description already names it), a second only for a banner.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(service.map { $0.description.isEmpty ? $0.name : $0.description } ?? "未知服务")
                     .lineLimit(1)
+                    .help(service.map { "\($0.name)：\($0.description)" } ?? "")
                 if let banner = device.banners[port] {
                     Text(banner)
                         .font(.caption.monospaced())
@@ -467,8 +481,11 @@ private struct MultiSelectionSummary: View {
                     .foregroundStyle(.secondary)
             }
             Section("批量操作") {
-                Button("扫描端口…", systemImage: "door.left.hand.open") { model.showPortScanSheet = true }
+                Button("扫描端口…", systemImage: "network.badge.shield.half.filled") { model.showPortScanSheet = true }
                 Button("收藏 / 取消收藏", systemImage: "star") { model.toggleFavorite(Set(devices.map(\.id))) }
+                Button(devices.allSatisfy(\.isWatched) ? "关闭上下线提醒" : "开启上下线提醒", systemImage: "bell") {
+                    model.toggleWatch(Set(devices.map(\.id)))
+                }
                 Button("网络唤醒", systemImage: "power") {
                     for d in devices { DeviceActions.wake(d, broadcast: model.interface?.broadcast) }
                 }

@@ -148,6 +148,8 @@ struct InfoRow: View {
                         .font(monospaced ? .body.monospaced() : .body)
                         .textSelection(.enabled)
                         .multilineTextAlignment(.trailing)
+                        .lineLimit(3)
+                        .truncationMode(.middle)
                     Button {
                         DeviceActions.copy(value)
                     } label: {

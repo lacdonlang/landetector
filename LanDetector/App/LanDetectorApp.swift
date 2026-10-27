@@ -53,6 +53,11 @@ struct AppCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
 
+        CommandGroup(after: .textEditing) {
+            Button("查找设备") { ToolbarSearchField.focus() }
+                .keyboardShortcut("f")
+        }
+
         CommandMenu("扫描") {
             Button(model.isScanning ? "停止扫描" : "开始扫描") {
                 model.isScanning ? model.stopScan() : model.startScan()
@@ -82,6 +87,10 @@ struct AppCommands: Commands {
                 model.toggleFavorite(model.selection)
             }
             .keyboardShortcut("d")
+            .disabled(selected.isEmpty)
+            Button(selected.allSatisfy(\.isWatched) && !selected.isEmpty ? "关闭上下线提醒" : "开启上下线提醒") {
+                model.toggleWatch(model.selection)
+            }
             .disabled(selected.isEmpty)
             Divider()
             Button("拷贝 IP 地址") {
@@ -114,6 +123,16 @@ struct AppCommands: Commands {
                 .keyboardShortcut("2")
             Button(model.showInspector ? "隐藏检查器" : "显示检查器") { model.showInspector.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
+            Menu("列") {
+                ForEach(DeviceColumn.toggleable) { column in
+                    Toggle(column.title, isOn: Binding(
+                        get: { model.isColumnVisible(column) },
+                        set: { model.setColumn(column, visible: $0) }
+                    ))
+                }
+                Divider()
+                Button("恢复默认列") { model.resetColumns() }
+            }
             Divider()
             Button("放大字号") { model.textScale = min(1.4, model.textScale + 0.05) }
                 .keyboardShortcut("+")

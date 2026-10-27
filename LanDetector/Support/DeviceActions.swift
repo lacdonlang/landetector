@@ -93,6 +93,25 @@ enum Notifier {
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
+
+    /// Watched devices that a completed scan found going online or offline.
+    static func notifyPresenceChanges(_ devices: [Device]) {
+        let content = UNMutableNotificationContent()
+        if devices.count == 1, let d = devices.first {
+            content.title = d.isOnline ? "\(d.displayName) 已上线" : "\(d.displayName) 已离线"
+            content.body = [d.ipv4?.description, d.model ?? d.vendor].compactMap { $0 }.joined(separator: " · ")
+        } else {
+            let online = devices.filter(\.isOnline).map(\.displayName)
+            let offline = devices.filter { !$0.isOnline }.map(\.displayName)
+            content.title = "\(devices.count) 台设备状态变化"
+            content.body = [online.isEmpty ? nil : "上线：" + online.joined(separator: "、"),
+                            offline.isEmpty ? nil : "离线：" + offline.joined(separator: "、")]
+                .compactMap { $0 }.joined(separator: "\n")
+        }
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
 }
 
 /// Writes scan results in the formats LanScan offers (plus JSON / Markdown).

@@ -7,7 +7,7 @@ Swift 6 + SwiftUI（macOS 26 Liquid Glass），无任何第三方依赖或统计
 
 | 能力 | LanScan | LanDetector |
 |---|---|---|
-| IPv4 子网 / 自定义区间扫描 | ✓ | ✓ 约 4 秒扫完 /24，首个结果 < 0.1 秒；可保存多个命名区间，工具栏一键切换 |
+| IPv4 子网 / 自定义区间扫描 | ✓ | ✓ 约 4 秒扫完 /24，首个结果 < 0.1 秒；可保存多个命名区间，侧栏网络菜单一键切换 |
 | ARP / MAC 获取 | ✓（macOS 27 被系统屏蔽） | ✓ sysctl + `arp` 回退，按过期时间判断新鲜度 |
 | ICMP 存活 + 延迟 | ✓ | ✓ 延迟曲线、持续 Ping |
 | IPv6 本地 / 全局地址 | ✓ | ✓ 组播发现 + NDP + EUI-64 反推 MAC |
@@ -17,8 +17,9 @@ Swift 6 + SwiftUI（macOS 26 Liquid Glass），无任何第三方依赖或统计
 | UPnP / SSDP | ✗ | ✓ 友好名称、制造商、型号 |
 | Bonjour 服务列表 | ✗ | ✓ 含 TXT 记录 |
 | 端口扫描 | ✓ | ✓ kqueue 高并发、IANA 服务名、HTTP 标题 / SSH 等 Banner |
-| 实时监控 | ✓ | ✓ 离线判定、新设备通知、菜单栏常驻 |
-| 设备库 | ✗ | ✓ 按网络持久化：首次发现、最后在线、近 30 天在线时间线与在线率 |
+| 实时监控 | ✓ | ✓ 离线判定、新设备通知、单台设备上下线提醒、菜单栏常驻 |
+| 设备库 | ✗ | ✓ 按网络持久化：首次发现、最后在线、近 30 天在线时间线与在线率；网关更换或 MAC 变化后按网段与共有设备自动认出同一网络并合并历史 |
+| 网络概览 | ✗ | ✓ 未选中设备时检查器显示在线统计、类型分布、最近上线 / 离线动态 |
 | 自定义名称 / 备注 / 网址 | ✓ | ✓ 另有收藏、手动指定类型 |
 | 导入导出自定义名称 | ✓ 软/硬导入 | ✓ 软/硬导入 |
 | 导出结果 | CSV/TSV/PSV | CSV（逗号/分号）/TSV/PSV/JSON/Markdown |
@@ -55,10 +56,12 @@ Scripts/cli.sh ports 192.168.1.1 common
 cd Packages/LanDetectorKit && swift test
 ```
 
-Debug 构建内置两个由环境变量开启的自检钩子（`LanDetector/Support/DebugSnapshot.swift`）：
+Debug 构建内置几个由环境变量开启的自检钩子（`LanDetector/Support/DebugSnapshot.swift`）：
 
 - `LANDETECTOR_SNAPSHOT_DIR=<目录>`：依次切换列表 / 卡片 / 深色模式并把窗口渲染成 PNG（无需屏幕录制权限；玻璃材质的侧栏与检查器渲染不出来）。
 - `LANDETECTOR_GALLERY_DIR=<目录>`：把侧栏、检查器（本机 / 网关 / 普通设备、深浅色）、设置各页、端口扫描面板、菜单栏面板分别放进普通离屏窗口渲染，弥补上一项拍不到玻璃面板的不足；主窗口按 1440 宽截图。
+- `LANDETECTOR_WIDTH_TEST=1`：在列表、卡片视图中依次选中每台设备并记录各栏宽度，检查器宽度必须始终不变。
+- `LANDETECTOR_TOOLBAR_TEST=1`：记录每个工具栏项位于哪一栏（检查器显示 / 隐藏各一次），并验证搜索框输入能筛选列表、⌘F 能聚焦搜索框。玻璃材质截不到图，工具栏布局以这里的坐标为准。
 - `LANDETECTOR_RESIZE_TEST=1`（可加 `LANDETECTOR_CHAOS=1`）：反复缩放窗口并切换视图与检查器，用于回归 SwiftUI 布局循环崩溃。详情列内容必须保持 `idealWidth: 0`，否则检查器打开时窗口变窄会触发 AppKit "Update Constraints" 死循环。
 
 ```bash

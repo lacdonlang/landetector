@@ -21,7 +21,7 @@ struct PortScanSheet: View {
         let portCount = preset.ports(custom: customPorts).count
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 12) {
-                Image(systemName: "door.left.hand.open")
+                Image(systemName: "network.badge.shield.half.filled")
                     .font(.title2)
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)

@@ -8,10 +8,9 @@ struct DeviceGridView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 210, maximum: 340), spacing: 14)], spacing: 14) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 300), spacing: 12)], spacing: 12) {
                 ForEach(devices) { device in
                     DeviceCard(device: device, isSelected: model.selection.contains(device.id))
-                        .contentShape(.rect(cornerRadius: 18))
                         .onTapGesture(count: 2) {
                             model.selection = [device.id]
                             model.showInspector = true
@@ -23,9 +22,7 @@ struct DeviceGridView: View {
                 }
             }
             .padding(16)
-            .animation(.snappy, value: devices.map(\.id))
         }
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4))
     }
 
     private func select(_ id: String) {
@@ -41,76 +38,79 @@ struct DeviceGridView: View {
     }
 }
 
+/// Fixed-size card: every card has the same rows, so the grid stays even whatever a device reports.
+/// Content uses a plain fill – Liquid Glass is for controls and navigation, not for content.
 struct DeviceCard: View {
     private let model = AppModel.shared
     let device: Device
     let isSelected: Bool
+    @State private var hovering = false
+
+    private static let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                DeviceIcon(kind: device.effectiveKind, size: 46, isOnline: device.isOnline)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    if device.isOnline {
-                        LatencyText(latency: device.latency)
-                            .font(.caption.weight(.medium))
-                    } else {
-                        Text(device.lastSeen.relativeText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 3) {
-                        if model.isRecent(device) { Chip(text: "新", color: .orange) }
-                        if device.isFavorite {
-                            Image(systemName: "star.fill").foregroundStyle(.yellow).imageScale(.small)
-                        }
-                    }
-                }
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                DeviceIcon(kind: device.effectiveKind, size: 38, isOnline: device.isOnline)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(device.displayName)
                         .font(.headline)
+                        .foregroundStyle(device.hasRealName ? .primary : .secondary)
                         .lineLimit(1)
-                    if device.isCurrentDevice { Chip(text: "本机", color: .blue) }
-                    if device.isGateway && device.displayName != "网关" { Chip(text: "网关", color: .indigo) }
+                    Text(device.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                Text(device.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                Spacer(minLength: 0)
+                badges
             }
+            Spacer(minLength: 8)
             HStack(spacing: 6) {
                 Text(device.ipv4?.description ?? device.ipv6.first?.description ?? "—")
                     .font(.callout.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                Spacer()
-                Chip(text: device.effectiveKind.title, color: device.effectiveKind.color)
-            }
-            if !device.openPorts.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(device.openPorts.prefix(8), id: \.self) { port in
-                            Chip(text: PortDatabase.shared.service(for: port)?.name.uppercased() ?? "\(port)", color: .secondary)
-                                .help(PortDatabase.shared.label(for: port))
-                        }
-                    }
+                Spacer(minLength: 4)
+                if device.isOnline {
+                    LatencyText(latency: device.latency)
+                        .font(.callout)
+                } else {
+                    Text("离线 · \(device.lastSeen.relativeText)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
         }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(LinearGradient(colors: [device.effectiveKind.color.opacity(device.isOnline ? 0.14 : 0.05), .clear],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+        .padding(12)
+        .frame(height: 96)
+        .background(Self.shape.fill(fill))
+        .overlay(Self.shape.strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.08),
+                                         lineWidth: isSelected ? 2 : 1))
+        .contentShape(Self.shape)
+        .opacity(device.isOnline ? 1 : 0.7)
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+
+    private var fill: Color {
+        if isSelected { return Color.accentColor.opacity(0.12) }
+        return Color.primary.opacity(hovering ? 0.07 : 0.04)
+    }
+
+    /// Always the same slot, so badges never shift the text.
+    private var badges: some View {
+        HStack(spacing: 4) {
+            if device.isCurrentDevice { Chip(text: "本机", color: .blue) }
+            if device.isGateway && device.displayName != "网关" { Chip(text: "网关", color: .indigo) }
+            if model.isRecent(device) { Chip(text: "新", color: .orange) }
+            if device.isFavorite {
+                Image(systemName: "star.fill").foregroundStyle(.yellow).imageScale(.small)
+            }
+            if device.isWatched {
+                Image(systemName: "bell.fill").foregroundStyle(.secondary).imageScale(.small)
+            }
         }
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
-        }
-        .opacity(device.isOnline ? 1 : 0.75)
     }
 }
