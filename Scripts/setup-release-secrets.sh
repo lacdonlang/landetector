@@ -1,11 +1,11 @@
 #!/bin/zsh
 # Sets up the secrets the release workflow signs, notarizes and publishes updates with
-# (see README ▸ 发布与在线更新). Values go straight to `gh secret set` and are never echoed.
+# (see docs/en/RELEASING.md). Values go straight to `gh secret set` and are never echoed.
 #   1. Sparkle: an EdDSA key pair for LanDetector. The private key stays in the login keychain (account
 #      com.lacdon.LanDetector – back it up with the keychain: without it installed copies get no more updates) and
 #      goes to SPARKLE_ED_PRIVATE_KEY; the public key is written to project.yml (SUPublicEDKey).
 #   2. The "Developer ID Application" certificate, exported from Keychain Access as .p12.
-#   3. Notarization: Apple ID and an app-specific password (account.apple.com ▸ 登录与安全 ▸ App 专用密码).
+#   3. Notarization: Apple ID and an app-specific password (account.apple.com ▸ Sign-In and Security ▸ App-Specific Passwords).
 # Steps whose secrets already exist are skipped; FORCE=1 redoes them.
 #   Scripts/setup-release-secrets.sh
 set -euo pipefail
@@ -18,7 +18,7 @@ existing="$(gh secret list --repo $REPO --json name --jq '.[].name')"
 needed() { [[ -n "${FORCE:-}" ]] || ! print -r -- "$existing" | grep -qx "$1"; }
 store() { gh secret set "$1" --repo $REPO > /dev/null && print "  ✓ $1"; }   # value on stdin
 
-print "1/3 Sparkle 更新签名密钥"
+print "1/3 Sparkle update signing key"
 if needed SPARKLE_ED_PRIVATE_KEY; then
   tools=build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin
   [[ -x $tools/generate_keys ]] || xcodebuild -resolvePackageDependencies -project LanDetector.xcodeproj \
@@ -28,23 +28,23 @@ if needed SPARKLE_ED_PRIVATE_KEY; then
   public="$($tools/generate_keys --account $ACCOUNT -p)"
   sed -i '' "s|SUPublicEDKey: .*|SUPublicEDKey: $public|" project.yml
   xcodegen generate -q
-  print "  公钥 $public 已写入 project.yml"
+  print "  Public key $public written to project.yml"
   dir="$(mktemp -d)"
   trap 'rm -rf "$dir"' EXIT
   $tools/generate_keys --account $ACCOUNT -x "$dir/key" > /dev/null
   store SPARKLE_ED_PRIVATE_KEY < "$dir/key"
 else
-  print "  已配置，跳过"
+  print "  Already set, skipped"
 fi
 
-print "\n2/3 Developer ID 证书"
+print "\n2/3 Developer ID certificate"
 if needed MACOS_CERTIFICATE_P12; then
-  print "  在“钥匙串访问”的“登录 ▸ 我的证书”里右键"
-  print "  “Developer ID Application: … ($TEAM_ID)” ▸ 导出，存为 .p12 并设置一个密码。"
-  read "p12?  .p12 文件路径（可拖入终端）: "
+  print "  In Keychain Access ▸ login ▸ My Certificates, Control-click"
+  print "  “Developer ID Application: … ($TEAM_ID)” ▸ Export, save it as .p12 and set a password."
+  read "p12?  Path of the .p12 (drag it into the terminal): "
   # Dropped files arrive quoted or backslash-escaped, with a trailing space.
   p12="${${(Q)${${p12## }%% }}/#\~/$HOME}"
-  read -s "p12_password?  .p12 密码: "; print
+  read -s "p12_password?  Password of the .p12: "; print
   # A wrong password fails here rather than in CI.
   check="$(mktemp -d)/check.keychain-db"
   security create-keychain -p check "$check"
@@ -52,24 +52,24 @@ if needed MACOS_CERTIFICATE_P12; then
   security delete-keychain "$check"
   base64 -i "$p12" | store MACOS_CERTIFICATE_P12
   print -rn -- "$p12_password" | store MACOS_CERTIFICATE_PASSWORD
-  print "  可以删除 $p12 了"
+  print "  You can delete $p12 now."
 else
-  print "  已配置，跳过"
+  print "  Already set, skipped"
 fi
 
-print "\n3/3 公证"
+print "\n3/3 Notarization"
 if needed NOTARY_PASSWORD; then
   read "apple_id?  Apple ID: "
-  read -s "app_password?  App 专用密码: "; print
+  read -s "app_password?  App-specific password: "; print
   # Fails on wrong credentials.
   xcrun notarytool history --apple-id "$apple_id" --team-id $TEAM_ID --password "$app_password" > /dev/null
   print -rn -- "$apple_id" | store NOTARY_APPLE_ID
   print -rn -- "$TEAM_ID" | store NOTARY_TEAM_ID
   print -rn -- "$app_password" | store NOTARY_PASSWORD
 else
-  print "  已配置，跳过"
+  print "  Already set, skipped"
 fi
 
-print "\n完成。$REPO 现有的 Secrets："
+print "\nDone. Secrets of $REPO:"
 gh secret list --repo $REPO
-git diff --quiet project.yml || print "\nproject.yml 的 SUPublicEDKey 已更新，需要提交。"
+git diff --quiet project.yml || print "\nSUPublicEDKey in project.yml changed: commit it."

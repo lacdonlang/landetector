@@ -1,9 +1,10 @@
 name: Release
 
 # Pushing a tag such as `v1.2.0` tests, builds, signs and notarizes the app and publishes a GitHub release with
-# LanDetector-1.2.0.zip and appcast.xml, from which installed copies update themselves (Sparkle). A tag with a suffix
+# LanDetector-1.2.0.dmg to download, plus LanDetector-1.2.0.zip and appcast.xml, from which installed copies update
+# themselves (Sparkle). A tag with a suffix
 # such as `v1.2.0-beta.1` becomes a pre-release, which installed copies do not see. The tag's message is the release
-# notes:  git tag -a v1.2.0 -m "- 新功能…" && git push origin v1.2.0
+# notes:  git tag -a v1.2.0 -m "- New feature…" && git push origin v1.2.0
 # Running the workflow by hand builds the same files as a workflow artifact and publishes nothing.
 #
 # Secrets – named as Fidget's; Scripts/setup-release-secrets.sh sets them up:
@@ -46,13 +47,14 @@ jobs:
             git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
           else
             VERSION="0.0.0-dev.$GITHUB_RUN_NUMBER"
-            echo "开发构建 ${GITHUB_SHA::7}" > "$RUNNER_TEMP/notes.md"
+            echo "Development build ${GITHUB_SHA::7}" > "$RUNNER_TEMP/notes.md"
           fi
           # Sparkle compares build numbers: 1.2.3 → 10203.
           IFS=. read -r MAJOR MINOR PATCH <<< "${VERSION%%-*}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD=$((MAJOR * 10000 + MINOR * 100 + ${PATCH:-0}))" >> "$GITHUB_ENV"
           echo "ZIP=LanDetector-$VERSION.zip" >> "$GITHUB_ENV"
+          echo "DMG=LanDetector-$VERSION.dmg" >> "$GITHUB_ENV"
           xcodebuild -version
 
       - name: Test
@@ -99,16 +101,30 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
         run: |
+          xcrun notarytool store-credentials landetector-notary \
+            --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD"
           ditto -c -k --keepParent dist/LanDetector.app "$RUNNER_TEMP/notarize.zip"
-          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" \
-            --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait --timeout 30m
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --keychain-profile landetector-notary --wait --timeout 30m
           xcrun stapler staple dist/LanDetector.app
           spctl --assess --type execute -vv dist/LanDetector.app
 
+      # The disk image is what people download; the zip is what installed copies update from.
       - name: Package
         run: |
           ditto -c -k --sequesterRsrc --keepParent dist/LanDetector.app "dist/$ZIP"
-          (cd dist && shasum -a 256 "$ZIP" > "$ZIP.sha256")
+          IDENTITY=()
+          if [[ "$HAS_CERT" == true ]]; then IDENTITY=("Developer ID Application"); fi
+          Scripts/make-dmg.sh dist/LanDetector.app "dist/$DMG" "${IDENTITY[@]}"
+
+      - name: Notarize disk image
+        if: env.HAS_CERT == 'true' && env.HAS_NOTARY == 'true'
+        run: |
+          xcrun notarytool submit "dist/$DMG" --keychain-profile landetector-notary --wait --timeout 30m
+          xcrun stapler staple "dist/$DMG"
+          spctl --assess --type open --context context:primary-signature -vv "dist/$DMG"
+
+      - name: Checksums
+        run: cd dist && shasum -a 256 "$DMG" "$ZIP" > SHA256SUMS.txt
 
       # Only a Developer ID build can replace an installed copy: Sparkle also checks the new code signature.
       - name: Appcast
@@ -123,8 +139,9 @@ jobs:
         with:
           name: LanDetector-${{ env.VERSION }}
           path: |
+            dist/*.dmg
             dist/*.zip
-            dist/*.sha256
+            dist/SHA256SUMS.txt
             dist/appcast.xml
           if-no-files-found: error
 
@@ -135,12 +152,12 @@ jobs:
         run: |
           NOTES="$RUNNER_TEMP/release-notes.md"
           if [[ "$HAS_CERT" != true ]]; then
-            echo "> 此版本为 ad-hoc 签名：可以扫描，但 macOS 27 只向 Developer ID 签名的应用开放 ARP 表，看不到 MAC 地址与厂商，也不能在线更新。" > "$NOTES"
+            echo "> This build is ad-hoc signed: it scans, but macOS 27 only shows MAC addresses and vendors to Developer ID signed apps, and it cannot update itself." > "$NOTES"
           elif [[ "$HAS_NOTARY" != true ]]; then
-            echo "> 此版本未经公证，首次打开需在“系统设置 ▸ 隐私与安全性”中允许。" > "$NOTES"
+            echo "> This build is not notarized: allow it in System Settings ▸ Privacy & Security the first time you open it." > "$NOTES"
           fi
           cat "$RUNNER_TEMP/notes.md" >> "$NOTES"
-          FILES=("dist/$ZIP" "dist/$ZIP.sha256")
+          FILES=("dist/$DMG" "dist/$ZIP" dist/SHA256SUMS.txt)
           if [[ -f dist/appcast.xml ]]; then FILES+=(dist/appcast.xml); fi
           PRERELEASE=()
           if [[ "$VERSION" == *-* ]]; then PRERELEASE=(--prerelease); fi
