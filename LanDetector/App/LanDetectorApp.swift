@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
             AppModel.shared.bootstrap()
+            Updater.start()
             #if DEBUG
             DebugSnapshot.scheduleIfRequested()
             #endif
@@ -51,6 +52,12 @@ struct AppCommands: Commands {
     let model: AppModel
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            if Updater.isAvailable {
+                Button("检查更新…") { Updater.checkForUpdates() }
+            }
+        }
+
         CommandGroup(replacing: .newItem) {}
 
         CommandGroup(after: .textEditing) {

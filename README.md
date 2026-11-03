@@ -1,7 +1,7 @@
 # LanDetector
 
 原生 macOS 局域网扫描器，完整覆盖 LanScan 的功能，并在识别能力、界面和监控上全面增强。
-Swift 6 + SwiftUI（macOS 26 Liquid Glass），无任何第三方依赖或统计 SDK。
+Swift 6 + SwiftUI（macOS 26 Liquid Glass）。唯一的第三方依赖是用于在线更新的 Sparkle，无统计 SDK。
 
 ## 功能
 
@@ -40,21 +40,26 @@ Scripts/build.sh --open
 
 首次扫描时系统会请求"本地网络"权限，需要允许。
 
-## 发布
+## 发布与在线更新
 
-推送 `v` 开头的 tag 即触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：运行测试，构建通用（Apple 芯片 + Intel）Release 并签名，把 `LanDetector-<版本>.zip` 及其 SHA-256 发布为 GitHub Release。版本号取自 tag，带后缀的 tag（如 `v1.1.0-beta.1`）发布为预发布版本。
+推送 `v` 开头的 tag 即触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：运行测试，构建通用（Apple 芯片 + Intel）Release，用 Developer ID 签名并公证，再发布 GitHub Release：`LanDetector-<版本>.zip`、它的 SHA-256 和 `appcast.xml`。版本号取自 tag，tag 的说明就是更新说明（以 `- ` 开头的行显示为列表）；带后缀的 tag（如 `v1.1.0-beta.1`）发布为预发布版本。
 
 ```bash
-git tag v1.1.0
+git tag -a v1.1.0 -m "- 新功能一" -m "- 修复二"
 git push origin v1.1.0
 ```
 
-签名用到的仓库 Secrets 都是可选的：
+已安装的应用用 [Sparkle](https://sparkle-project.org) 每天检查一次最新 Release 里的 `appcast.xml`（也可在应用菜单里“检查更新…”），校验 EdDSA 签名与开发者签名后替换自身。Debug 构建不检查更新。预发布版本不会推送给已安装的应用。
 
-- `DEVELOPER_ID_P12`、`DEVELOPER_ID_P12_PASSWORD`：`Developer ID Application` 证书（含私钥）导出的 .p12 的 base64 及其密码。缺省时改为 ad-hoc 签名：能扫描，但拿不到 MAC。
-- `NOTARY_APPLE_ID`、`NOTARY_PASSWORD`：公证用的 Apple ID 与 App 专用密码，需同时配置证书。
+仓库 Secrets 与 Fidget 相同：
 
-在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
+| Secret | 内容 |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12`、`MACOS_CERTIFICATE_PASSWORD` | `Developer ID Application` 证书（含私钥）导出的 .p12 的 base64，及其密码 |
+| `NOTARY_APPLE_ID`、`NOTARY_TEAM_ID`、`NOTARY_PASSWORD` | 公证用的 Apple ID、Team ID 与 App 专用密码 |
+| `SPARKLE_ED_PRIVATE_KEY` | 给更新包签名的 EdDSA 私钥；公钥是 `project.yml` 里的 `SUPublicEDKey`（与 Fidget 共用一对） |
+
+缺少证书时改为 ad-hoc 签名，能扫描但拿不到 MAC，也不生成 `appcast.xml`；缺少公证凭据时跳过公证。仓库必须保持公开，已安装的应用要匿名下载更新。在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
 
 ## 命令行调试
 

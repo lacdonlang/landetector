@@ -1,16 +1,17 @@
 name: Release
 
-# Pushing a tag such as `v1.2.0` tests, builds and signs the app and publishes LanDetector-1.2.0.zip as a GitHub
-# release (`v1.2.0-beta.1` becomes a pre-release). Running the workflow by hand builds the same zip as a workflow
-# artifact and publishes nothing.
+# Pushing a tag such as `v1.2.0` tests, builds, signs and notarizes the app and publishes a GitHub release with
+# LanDetector-1.2.0.zip and appcast.xml, from which installed copies update themselves (Sparkle). A tag with a suffix
+# such as `v1.2.0-beta.1` becomes a pre-release, which installed copies do not see. The tag's message is the release
+# notes:  git tag -a v1.2.0 -m "- 新功能…" && git push origin v1.2.0
+# Running the workflow by hand builds the same files as a workflow artifact and publishes nothing.
 #
-# Optional repository secrets:
-#   DEVELOPER_ID_P12           "Developer ID Application" certificate with its private key, as base64 of the .p12.
-#   DEVELOPER_ID_P12_PASSWORD  Its password.
-#                              Without the certificate the app is ad-hoc signed: it scans, but macOS 27 only shows
-#                              ARP / NDP MAC addresses to Developer ID signed apps.
-#   NOTARY_APPLE_ID            Apple ID for notarization (needs the certificate).
-#   NOTARY_PASSWORD            App-specific password of that Apple ID.
+# Secrets – the same as Fidget's:
+#   MACOS_CERTIFICATE_P12, MACOS_CERTIFICATE_PASSWORD  "Developer ID Application" certificate with its private key
+#       (.p12 as base64) and its password. Without them the build is ad-hoc signed: it scans, but macOS 27 hides MAC
+#       addresses from it, and it cannot update itself.
+#   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD   notarization: Apple ID, team, app-specific password.
+#   SPARKLE_ED_PRIVATE_KEY                            EdDSA key signing updates; its public key is SUPublicEDKey.
 
 on:
   push:
@@ -26,22 +27,31 @@ concurrency:
 jobs:
   release:
     runs-on: xcode-27
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
-      HAS_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' }}
-      HAS_NOTARY: ${{ secrets.NOTARY_APPLE_ID != '' && secrets.NOTARY_PASSWORD != '' }}
-      TEAM_ID: N4828PE57J
+      # Step conditions cannot read secrets; these flags can.
+      HAS_CERT: ${{ secrets.MACOS_CERTIFICATE_P12 != '' }}
+      HAS_NOTARY: ${{ secrets.NOTARY_APPLE_ID != '' && secrets.NOTARY_TEAM_ID != '' && secrets.NOTARY_PASSWORD != '' }}
+      HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Version
+      - name: Version and release notes
         run: |
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
+            # checkout leaves a lightweight tag; fetch the annotated one for its message.
+            git fetch --force --depth=1 origin "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
           else
             VERSION="0.0.0-dev.$GITHUB_RUN_NUMBER"
+            echo "开发构建 ${GITHUB_SHA::7}" > "$RUNNER_TEMP/notes.md"
           fi
+          # Sparkle compares build numbers: 1.2.3 → 10203.
+          IFS=. read -r MAJOR MINOR PATCH <<< "${VERSION%%-*}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD=$((MAJOR * 10000 + MINOR * 100 + ${PATCH:-0}))" >> "$GITHUB_ENV"
+          echo "ZIP=LanDetector-$VERSION.zip" >> "$GITHUB_ENV"
           xcodebuild -version
 
       - name: Test
@@ -50,71 +60,88 @@ jobs:
       - name: Import Developer ID certificate
         if: env.HAS_CERT == 'true'
         env:
-          P12: ${{ secrets.DEVELOPER_ID_P12 }}
-          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
           echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-          rm "$RUNNER_TEMP/cert.p12"
-          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          rm -f "$RUNNER_TEMP/cert.p12"
 
       - name: Build
         run: |
           if [[ "$HAS_CERT" == true ]]; then
             # Notarization needs a secure timestamp, which plain builds leave out.
-            SIGNING=("OTHER_CODE_SIGN_FLAGS=--timestamp --keychain $KEYCHAIN")
+            SIGNING=(OTHER_CODE_SIGN_FLAGS=--timestamp)
           else
-            SIGNING=(CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=)
+            # Without a Team ID the hardened runtime's library validation would refuse Sparkle.framework.
+            SIGNING=(CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO)
           fi
           xcodebuild -project LanDetector.xcodeproj -scheme LanDetector -configuration Release \
             -derivedDataPath build/DerivedData -destination 'generic/platform=macOS' \
-            MARKETING_VERSION="${VERSION%%-*}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" "${SIGNING[@]}" build
+            MARKETING_VERSION="${VERSION%%-*}" CURRENT_PROJECT_VERSION="$BUILD" "${SIGNING[@]}" build
           mkdir -p dist
           ditto build/DerivedData/Build/Products/Release/LanDetector.app dist/LanDetector.app
+          if [[ "$HAS_CERT" == true ]]; then Scripts/resign.sh dist/LanDetector.app; fi
           codesign --verify --deep --strict --verbose=2 dist/LanDetector.app
 
       - name: Notarize
         if: env.HAS_CERT == 'true' && env.HAS_NOTARY == 'true'
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
         run: |
           ditto -c -k --keepParent dist/LanDetector.app "$RUNNER_TEMP/notarize.zip"
           xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" \
-            --password "$NOTARY_PASSWORD" --team-id "$TEAM_ID" --wait --timeout 30m
+            --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait --timeout 30m
           xcrun stapler staple dist/LanDetector.app
+          spctl --assess --type execute -vv dist/LanDetector.app
 
       - name: Package
         run: |
-          ZIP="LanDetector-$VERSION.zip"
-          ditto -c -k --keepParent dist/LanDetector.app "dist/$ZIP"
+          ditto -c -k --sequesterRsrc --keepParent dist/LanDetector.app "dist/$ZIP"
           (cd dist && shasum -a 256 "$ZIP" > "$ZIP.sha256")
-          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+      # Only a Developer ID build can replace an installed copy: Sparkle also checks the new code signature.
+      - name: Appcast
+        if: env.HAS_CERT == 'true' && env.HAS_SPARKLE_KEY == 'true'
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          SIGN_UPDATE: build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: Scripts/make-appcast.sh dist/LanDetector.app "dist/$ZIP" "$RUNNER_TEMP/notes.md" dist
 
       - uses: actions/upload-artifact@v7
         with:
           name: LanDetector-${{ env.VERSION }}
-          path: dist/LanDetector-*.zip*
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/appcast.xml
+          if-no-files-found: error
 
       - name: Publish release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES=""
+          NOTES="$RUNNER_TEMP/release-notes.md"
           if [[ "$HAS_CERT" != true ]]; then
-            NOTES="> 此版本为 ad-hoc 签名：可以扫描，但 macOS 27 只向 Developer ID 签名的应用开放 ARP 表，看不到 MAC 地址与厂商。首次打开需在“系统设置 ▸ 隐私与安全性”中允许。"
+            echo "> 此版本为 ad-hoc 签名：可以扫描，但 macOS 27 只向 Developer ID 签名的应用开放 ARP 表，看不到 MAC 地址与厂商，也不能在线更新。" > "$NOTES"
           elif [[ "$HAS_NOTARY" != true ]]; then
-            NOTES="> 此版本已用 Developer ID 签名但未经公证，首次打开需在“系统设置 ▸ 隐私与安全性”中允许。"
+            echo "> 此版本未经公证，首次打开需在“系统设置 ▸ 隐私与安全性”中允许。" > "$NOTES"
           fi
+          cat "$RUNNER_TEMP/notes.md" >> "$NOTES"
+          FILES=("dist/$ZIP" "dist/$ZIP.sha256")
+          if [[ -f dist/appcast.xml ]]; then FILES+=(dist/appcast.xml); fi
           PRERELEASE=()
           if [[ "$VERSION" == *-* ]]; then PRERELEASE=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" "dist/$ZIP" "dist/$ZIP.sha256" --verify-tag \
-            --title "LanDetector $VERSION" --generate-notes --notes "$NOTES" "${PRERELEASE[@]}"
+          gh release create "$GITHUB_REF_NAME" "${FILES[@]}" --verify-tag --title "LanDetector $VERSION" \
+            --notes-file "$NOTES" --generate-notes "${PRERELEASE[@]}"

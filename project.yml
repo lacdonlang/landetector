@@ -10,6 +10,10 @@ options:
 packages:
   LanDetectorKit:
     path: Packages/LanDetectorKit
+  # In-app updates from GitHub releases – the only third-party dependency.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.10.1"
 
 settings:
   base:
@@ -35,6 +39,7 @@ targets:
       - path: LanDetector
     dependencies:
       - package: LanDetectorKit
+      - package: Sparkle
     info:
       path: LanDetector/Info.plist
       properties:
@@ -42,6 +47,11 @@ targets:
         # Release builds set both from the git tag (.github/workflows/release.yml).
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Sparkle reads the appcast of the latest release; updates must be signed with the matching EdDSA private key
+        # (the SPARKLE_ED_PRIVATE_KEY secret – the same key pair as Fidget).
+        SUFeedURL: https://github.com/lacdonlang/landetector/releases/latest/download/appcast.xml
+        SUPublicEDKey: eN2mQilJG7vkJhUW5xphAooxOyIEtIhTvt1xt7WhSI0=
+        SUEnableAutomaticChecks: true
         CFBundleDevelopmentRegion: zh-Hans
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
