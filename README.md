@@ -51,15 +51,15 @@ git push origin v1.1.0
 
 已安装的应用用 [Sparkle](https://sparkle-project.org) 每天检查一次最新 Release 里的 `appcast.xml`（也可在应用菜单里“检查更新…”），校验 EdDSA 签名与开发者签名后替换自身。Debug 构建不检查更新。预发布版本不会推送给已安装的应用。
 
-仓库 Secrets 与 Fidget 相同：
+仓库 Secrets 与 Fidget 同名，运行 `Scripts/setup-release-secrets.sh` 按提示配置：
 
 | Secret | 内容 |
 | --- | --- |
 | `MACOS_CERTIFICATE_P12`、`MACOS_CERTIFICATE_PASSWORD` | `Developer ID Application` 证书（含私钥）导出的 .p12 的 base64，及其密码 |
 | `NOTARY_APPLE_ID`、`NOTARY_TEAM_ID`、`NOTARY_PASSWORD` | 公证用的 Apple ID、Team ID 与 App 专用密码 |
-| `SPARKLE_ED_PRIVATE_KEY` | 给更新包签名的 EdDSA 私钥；公钥是 `project.yml` 里的 `SUPublicEDKey`（与 Fidget 共用一对） |
+| `SPARKLE_ED_PRIVATE_KEY` | 给更新包签名的 EdDSA 私钥；公钥是 `project.yml` 里的 `SUPublicEDKey` |
 
-缺少证书时改为 ad-hoc 签名，能扫描但拿不到 MAC，也不生成 `appcast.xml`；缺少公证凭据时跳过公证。仓库必须保持公开，已安装的应用要匿名下载更新。在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
+Sparkle 私钥同时保存在维护者的登录钥匙串（账号 `com.lacdon.LanDetector`），务必随钥匙串备份：丢失后已安装的版本再也收不到更新。缺少证书时改为 ad-hoc 签名，能扫描但拿不到 MAC，也不生成 `appcast.xml`；缺少公证凭据时跳过公证。仓库必须保持公开，已安装的应用要匿名下载更新。在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
 
 ## 命令行调试
 

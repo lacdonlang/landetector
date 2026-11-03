@@ -6,7 +6,7 @@ name: Release
 # notes:  git tag -a v1.2.0 -m "- 新功能…" && git push origin v1.2.0
 # Running the workflow by hand builds the same files as a workflow artifact and publishes nothing.
 #
-# Secrets – the same as Fidget's:
+# Secrets – named as Fidget's; Scripts/setup-release-secrets.sh sets them up:
 #   MACOS_CERTIFICATE_P12, MACOS_CERTIFICATE_PASSWORD  "Developer ID Application" certificate with its private key
 #       (.p12 as base64) and its password. Without them the build is ad-hoc signed: it scans, but macOS 27 hides MAC
 #       addresses from it, and it cannot update itself.

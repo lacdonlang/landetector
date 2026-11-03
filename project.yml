@@ -48,9 +48,9 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Sparkle reads the appcast of the latest release; updates must be signed with the matching EdDSA private key
-        # (the SPARKLE_ED_PRIVATE_KEY secret – the same key pair as Fidget).
+        # (the SPARKLE_ED_PRIVATE_KEY secret, see Scripts/setup-release-secrets.sh).
         SUFeedURL: https://github.com/lacdonlang/landetector/releases/latest/download/appcast.xml
-        SUPublicEDKey: eN2mQilJG7vkJhUW5xphAooxOyIEtIhTvt1xt7WhSI0=
+        SUPublicEDKey: MwbY712Euqk3ndNUlnl2DU/F3tR12ycdPBkj6hB8Rn4=
         SUEnableAutomaticChecks: true
         CFBundleDevelopmentRegion: zh-Hans
         LSApplicationCategoryType: public.app-category.utilities
