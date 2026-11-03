@@ -42,7 +42,8 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
             # checkout leaves a lightweight tag; fetch the annotated one for its message.
             git fetch --force --depth=1 origin "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
-            git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
+            # Subject and body only: a signed tag's contents end with the signature.
+            git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
           else
             VERSION="0.0.0-dev.$GITHUB_RUN_NUMBER"
             echo "开发构建 ${GITHUB_SHA::7}" > "$RUNNER_TEMP/notes.md"
