@@ -47,11 +47,12 @@ public struct DNSMessage: Sendable {
 
 /// Minimal DNS wire-format encoder/decoder (RFC 1035 + mDNS bits from RFC 6762).
 public enum DNSCodec {
-    public static func query(id: UInt16 = 0, _ questions: [DNSQuestion]) -> [UInt8] {
+    /// `recursionDesired` for ordinary DNS servers; mDNS queries leave it off.
+    public static func query(id: UInt16 = 0, recursionDesired: Bool = false, _ questions: [DNSQuestion]) -> [UInt8] {
         var out: [UInt8] = []
         out.reserveCapacity(64 * questions.count)
         append16(&out, id)
-        append16(&out, 0) // standard query
+        append16(&out, recursionDesired ? 0x0100 : 0) // standard query
         append16(&out, UInt16(questions.count))
         append16(&out, 0)
         append16(&out, 0)

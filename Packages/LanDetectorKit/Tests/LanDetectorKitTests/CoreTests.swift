@@ -110,6 +110,18 @@ import Testing
         let p = DeviceClassifier.identify(phone)
         #expect(p.kind == .phone)
         #expect(p.model == "iPhone")
+
+        // A Xiaomi vendor alone suggests a phone; the MIoT host name says air purifier.
+        var purifier = Device(id: "z")
+        purifier.dnsName = "zhimi-airp-sa4_mibtAC1B"
+        purifier.vendorFull = "Xiaomi Communications Co Ltd"
+        #expect(DeviceClassifier.identify(purifier).kind == .smartHome)
+
+        // Host name and vendor tie (router vs network device): the host name, checked first, decides.
+        var router = Device(id: "r")
+        router.dnsName = "router.h3c.com"
+        router.vendorFull = "New H3C Technologies Co., Ltd"
+        #expect(DeviceClassifier.identify(router).kind == .router)
     }
 
     @Test func inventoryMergesPlaceholder() {
@@ -355,5 +367,89 @@ import Testing
         #expect(inv.devices[oldVM.id]?.isOnline == false)
         #expect(inv.devices[newVM.id]?.isGateway == true)
         #expect(inv.devices[oldVM.id]?.isGateway == false)
+    }
+}
+
+@Suite struct RemoteRangeTests {
+    private let here = NetworkInterface(name: "en0", index: 1, displayName: "Wi-Fi", kind: .wifi,
+                                        mac: MACAddress("60:3e:5f:38:65:21"), ipv4: IPv4Address("192.168.99.12")!,
+                                        netmask: IPv4Address("255.255.255.0")!, gateway: IPv4Address("192.168.99.253"),
+                                        ipv6: [])
+    private let behindRouter = IPv4Range(string: "192.168.77.1/24")!
+
+    @Test func coveringSubnet() {
+        #expect(behindRouter.coveringSubnet == "192.168.77.0/24")
+        #expect(IPv4Range(string: "10.0.0.5-10.0.0.9")!.coveringSubnet == "10.0.0.0/28")
+        #expect(IPv4Range(string: "10.0.0.5")!.coveringSubnet == "10.0.0.5/32")
+        #expect(IPv4Address(prefixLength: 24) == IPv4Address("255.255.255.0"))
+        #expect(IPv4Address(prefixLength: 0).value == 0 && IPv4Address(prefixLength: 32).value == .max)
+    }
+
+    @Test func onlyRangesOutsideTheSubnetAreRemote() {
+        let remote = ScanContext(interface: here, range: behindRouter, startedAt: Date())
+        #expect(!remote.isLocal)
+        #expect(remote.covers(IPv4Address("192.168.77.20")!))
+        #expect(!remote.covers(here.ipv4) && !remote.covers(here.gateway!))
+        // A local range also reports this Mac and its gateway, even outside the range.
+        let part = ScanContext(interface: here, range: IPv4Range(string: "192.168.99.100-200")!, startedAt: Date())
+        #expect(part.isLocal)
+        #expect(part.covers(here.ipv4) && part.covers(here.gateway!))
+        #expect(!part.covers(IPv4Address("192.168.99.50")!))
+    }
+
+    @Test func historyAnswersForAddressesBehindARouter() {
+        let switchMAC = MACAddress("dc:65:55:a7:b8:71")!
+        var known = Device(id: Device.key(for: switchMAC), mac: switchMAC, ipv4: IPv4Address("192.168.77.2"),
+                           now: Date(timeIntervalSinceNow: -864_000))
+        known.dnsName = "BS224R_B871"
+        var inv = DeviceInventory(devices: [known])
+        inv.apply(.started(ScanContext(interface: here, range: behindRouter, startedAt: Date())))
+        inv.apply(.alive(IPv4Address("192.168.77.2")!, rtt: 4))
+        // This Mac and its gateway belong to another network.
+        inv.apply(.alive(here.ipv4, rtt: 0.1))
+        inv.apply(.alive(here.gateway!, rtt: 1))
+        inv.apply(.neighbors([ARPEntry(ip: here.ipv4, mac: here.mac!, interface: "en0", isPermanent: true, isFresh: true)],
+                             source: .sysctl))
+        inv.finishScan()
+        #expect(inv.devices.count == 1)
+        #expect(inv.devices[known.id]?.isOnline == true)
+        #expect(inv.devices[known.id]?.latency == 4)
+        #expect(inv.devices[known.id]?.dnsName == "BS224R_B871")
+    }
+
+    @Test func storeOfTheSubnetBehindTheRouter() {
+        let h3c = MACAddress("8c:96:a5:91:d0:d8")!
+        func store(_ key: String, _ age: TimeInterval, subnet: String?, gateways: [MACAddress] = [],
+                   ips: [String]) -> NetworkFingerprint {
+            NetworkFingerprint(key: key, savedAt: Date(timeIntervalSinceNow: -age), subnet: subnet,
+                               gatewayMACs: Set(gateways), deviceMACs: [], deviceIPs: ips.compactMap(IPv4Address.init))
+        }
+        let legacy = store("gw-h3c", 900, subnet: nil, gateways: [h3c], ips: ["192.168.77.1", "192.168.77.2", "192.168.77.80"])
+        let home = store("home", 10, subnet: "192.168.99.0/24", ips: ["192.168.99.1", "192.168.77.5"])
+        let elsewhere = store("other-77", 50, subnet: "192.168.77.0/24", ips: ["192.168.77.9"])
+        // The router this Mac sees on its own LAN serves the range: its store beats a newer one of the same subnet.
+        #expect(NetworkMatcher.store(behind: behindRouter, localMACs: [h3c], stores: [legacy, home, elsewhere]) == "gw-h3c")
+        #expect(NetworkMatcher.store(behind: behindRouter, localMACs: [], stores: [legacy, home, elsewhere]) == "other-77")
+        #expect(NetworkMatcher.store(behind: IPv4Range(string: "192.168.77.10-20")!, localMACs: [], stores: [elsewhere])
+                == "other-77")
+        #expect(NetworkMatcher.store(behind: IPv4Range(string: "192.168.0.0/16")!, localMACs: [], stores: [elsewhere, home])
+                == nil)
+    }
+
+    @Test func leftoversOfEarlierRangeScansAreDropped() {
+        let stray = Device(id: "ip:192.168.77.9", ipv4: IPv4Address("192.168.77.9"), now: Date())
+        var named = Device(id: "ip:192.168.77.14", ipv4: IPv4Address("192.168.77.14"), now: Date())
+        named.customName = "NAS"
+        let roaming = Device(id: "mac:aa:bb:cc:dd:ee:31", mac: MACAddress("aa:bb:cc:dd:ee:31"),
+                             ipv4: IPv4Address("192.168.77.3"), now: Date())
+        let local = Device(id: "ip:192.168.99.40", ipv4: IPv4Address("192.168.99.40"), now: Date())
+        let kept = NetworkMatcher.removingRemoteLeftovers([stray, named, roaming, local], subnet: here.subnet).map(\.id)
+        #expect(kept == [named.id, roaming.id, local.id])
+    }
+
+    @Test func unicastQueriesAskForRecursion() {
+        let query = DNSCodec.query(id: 7, recursionDesired: true, [DNSQuestion("2.77.168.192.in-addr.arpa", .ptr)])
+        #expect(query[2] == 0x01 && query[3] == 0x00)
+        #expect(DNSCodec.query([DNSQuestion("x.local", .ptr)])[2] == 0)
     }
 }

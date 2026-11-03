@@ -19,6 +19,9 @@ public struct IPv4Address: Hashable, Comparable, Sendable, CustomStringConvertib
 
     public init(_ addr: in_addr) { value = UInt32(bigEndian: addr.s_addr) }
 
+    /// The netmask of a prefix length: `255.255.255.0` for 24.
+    public init(prefixLength bits: Int) { value = bits == 0 ? 0 : ~UInt32(0) << (32 - UInt32(bits)) }
+
     public var inAddr: in_addr { in_addr(s_addr: value.bigEndian) }
 
     public var octets: (UInt8, UInt8, UInt8, UInt8) {
@@ -190,8 +193,7 @@ public struct IPv4Range: Hashable, Sendable, Sequence, CustomStringConvertible, 
         if let slash = s.firstIndex(of: "/") {
             guard let ip = IPv4Address(String(s[..<slash])),
                   let bits = Int(s[s.index(after: slash)...]), (0...32).contains(bits) else { return nil }
-            let mask: UInt32 = bits == 0 ? 0 : ~UInt32(0) << (32 - UInt32(bits))
-            self = .subnet(address: ip, netmask: IPv4Address(mask))
+            self = .subnet(address: ip, netmask: IPv4Address(prefixLength: bits))
             return
         }
         let parts = s.split(separator: "-", maxSplits: 1).map(String.init)
@@ -212,6 +214,14 @@ public struct IPv4Range: Hashable, Sendable, Sequence, CustomStringConvertible, 
     public var count: Int { Int(upper.value) - Int(lower.value) + 1 }
 
     public func contains(_ ip: IPv4Address) -> Bool { ip >= lower && ip <= upper }
+
+    public func overlaps(_ other: IPv4Range) -> Bool { lower <= other.upper && other.lower <= upper }
+
+    /// The smallest CIDR block holding the whole range: `192.168.77.0/24` for `.1 – .254`.
+    public var coveringSubnet: String {
+        let prefix = (lower.value ^ upper.value).leadingZeroBitCount
+        return NetworkMatcher.subnetKey(lower, netmask: IPv4Address(prefixLength: prefix))
+    }
 
     public var description: String { lower == upper ? lower.description : "\(lower) – \(upper)" }
 

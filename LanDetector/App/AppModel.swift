@@ -39,6 +39,8 @@ final class AppModel {
     var publicIP: PublicIPInfo?
     var dnsServers: [String] = []
     private(set) var networkKey: String?
+    /// Set while the list shows the store of a range behind a router (its subnet, e.g. `192.168.77.0/24`).
+    private(set) var shownRemoteSubnet: String?
 
     // MARK: Scan range
     /// Saved custom ranges, edited in Settings ▸ 扫描.
@@ -53,10 +55,18 @@ final class AppModel {
         didSet { Prefs.selectedRangePresetID = selectedRangeID }
     }
     var selectedRange: RangePreset? { rangePresets.first { $0.id == selectedRangeID } }
+    /// The selected range when it lies outside this Mac's subnet, behind a router. Nothing link-local (MAC, Bonjour,
+    /// IPv6) reaches this Mac from there, so its devices live in that network's own store.
+    var remoteRange: IPv4Range? {
+        guard let iface = interface, let range = selectedRange?.ipv4Range, !range.overlaps(iface.subnet) else { return nil }
+        return range
+    }
 
     // MARK: Devices
     @ObservationIgnored private var inventory = DeviceInventory()
-    private(set) var devices: [Device] = []
+    private(set) var devices: [Device] = [] {
+        didSet { listRevision &+= 1 }
+    }
     var selection: Set<String> = []
     var sidebar: SidebarItem? = .all
     var searchText = ""
@@ -110,6 +120,17 @@ final class AppModel {
     /// Stored with the inventory so the network can be recognised again (see `NetworkMatcher`).
     @ObservationIgnored private var networkSubnet: String?
     @ObservationIgnored private var knownGatewayMACs: Set<String> = []
+    /// The store of the selected interface's network; `networkKey` differs while a remote range is shown.
+    @ObservationIgnored private var localNetworkKey: String?
+    /// Bumped whenever another store is loaded, so a scan still running for the previous one is ignored.
+    @ObservationIgnored private var storeGeneration = 0
+    /// Routers on this LAN that may know names the system resolver does not (see `UnicastDNS`).
+    @ObservationIgnored private var lanDNSServers: [IPv4Address] = []
+    /// Bumped with every `devices` update. The list, the window subtitle and the sidebar read the derived lists on
+    /// every render, so they are cached per revision.
+    private var listRevision = 0
+    @ObservationIgnored private var visibleCache: (key: ListKey, devices: [Device])?
+    @ObservationIgnored private var countsCache: (revision: Int, hideIPv6Only: Bool, counts: SidebarCounts)?
 
     private init() {}
 
@@ -148,7 +169,8 @@ final class AppModel {
         Task { await activateCurrentNetwork(scan: true) }
     }
 
-    /// Loads the stored inventory of the network behind the selected interface.
+    /// Loads the stored inventory of the network behind the selected interface – or, when the selected range lies
+    /// behind a router, the store of that network.
     func activateCurrentNetwork(scan: Bool) async {
         guard let iface = interface else {
             devices = []
@@ -156,18 +178,68 @@ final class AppModel {
         }
         // Flush the current network first, so a merge of stores sees its latest state.
         saveNow()
-        if let resolution = await NetworkIdentity.resolve(for: iface, currentKey: networkKey) {
+        if let resolution = await NetworkIdentity.resolve(for: iface, currentKey: localNetworkKey) {
             stopScan()
-            networkKey = resolution.key
-            networkSubnet = resolution.subnet
-            knownGatewayMACs = resolution.gatewayMACs
-            inventory = DeviceInventory(devices: resolution.devices)
-            selection = []
-            sessionNewIDs = []
-            completedScans = 0
-            publish()
+            localNetworkKey = resolution.key
+            lanDNSServers = Self.dnsCandidates(in: resolution.devices, subnet: iface.subnet)
+            if remoteRange == nil {
+                show(key: resolution.key, subnet: resolution.subnet, gatewayMACs: resolution.gatewayMACs,
+                     devices: NetworkMatcher.removingRemoteLeftovers(resolution.devices, subnet: iface.subnet),
+                     remoteSubnet: nil)
+            }
         }
+        await syncRangeStore()
         if scan { startScan() }
+    }
+
+    /// Loads the store the scan range belongs to: this network's, or for a range behind a router the store of that
+    /// network – its devices as recorded while this Mac was connected to it, which a scan from here can only ping.
+    private func syncRangeStore() async {
+        guard let iface = interface, shownRemoteSubnet != remoteRange?.coveringSubnet else { return }
+        stopScan()
+        saveNow()
+        if let range = remoteRange {
+            let store = await NetworkIdentity.resolve(remote: range, from: iface)
+            show(key: store.key, subnet: store.subnet, gatewayMACs: store.gatewayMACs, devices: store.devices,
+                 remoteSubnet: range.coveringSubnet)
+        } else if let key = localNetworkKey {
+            let stored = await Task.detached(priority: .userInitiated) { DeviceStore.load(key: key) }.value
+            show(key: key, subnet: NetworkMatcher.subnetKey(iface.ipv4, netmask: iface.netmask),
+                 gatewayMACs: Set(stored?.gatewayMACs ?? []),
+                 devices: NetworkMatcher.removingRemoteLeftovers(stored?.devices ?? [], subnet: iface.subnet),
+                 remoteSubnet: nil)
+        }
+    }
+
+    private func show(key: String, subnet: String?, gatewayMACs: Set<String>, devices: [Device], remoteSubnet: String?) {
+        storeGeneration += 1
+        networkKey = key
+        shownRemoteSubnet = remoteSubnet
+        networkSubnet = subnet
+        knownGatewayMACs = gatewayMACs
+        inventory = DeviceInventory(devices: devices)
+        // Assigning even an unchanged selection makes the table push it to AppKit again.
+        if !selection.isEmpty { selection = [] }
+        sessionNewIDs = []
+        completedScans = 0
+        lastScan = nil
+        lastScanDate = nil
+        publish()
+    }
+
+    /// Devices on this LAN that probably answer DNS queries: port 53 seen open, or a router.
+    private static func dnsCandidates(in devices: [Device], subnet: IPv4Range) -> [IPv4Address] {
+        devices.filter { $0.openPorts.contains(53) || $0.effectiveKind == .router }.compactMap(\.ipv4).filter(subnet.contains)
+    }
+
+    /// Where to ask for names the system resolver lacks: routers on this LAN, the gateway, and for a range behind a
+    /// router its first address (usually that router).
+    private func reverseDNSServers(for iface: NetworkInterface) -> [IPv4Address] {
+        let system = Set(dnsServers.compactMap(IPv4Address.init))
+        var candidates = lanDNSServers + [iface.gateway].compactMap { $0 }
+        if let range = remoteRange, let first = IPv4Range(string: range.coveringSubnet)?.lower { candidates.append(first) }
+        var seen = system
+        return Array(candidates.filter { seen.insert($0).inserted }.prefix(4))
     }
 
     private func startPathMonitor() {
@@ -206,17 +278,29 @@ final class AppModel {
 
     func startScan() {
         guard !isScanning, let iface = interface else { return }
+        // The range may have moved behind a router (or back) since the store was loaded, e.g. edited in Settings.
+        if shownRemoteSubnet != remoteRange?.coveringSubnet {
+            Task {
+                await syncRangeStore()
+                if shownRemoteSubnet == remoteRange?.coveringSubnet { startScan() }
+            }
+            return
+        }
         isScanning = true
         progress = 0
         phase = .discovery
-        let options = Prefs.scanOptions()
+        var options = Prefs.scanOptions()
+        options.extraDNSServers = reverseDNSServers(for: iface)
         let knownBefore = Set(inventory.devices.keys)
         let onlineBefore = inventory.devices.mapValues(\.isOnline)
+        let generation = storeGeneration
         scanTask = Task {
             for await event in engine.scan(iface, options: options) {
+                guard generation == storeGeneration else { break }
                 handle(event)
             }
-            scanFinished(knownBefore: knownBefore, onlineBefore: onlineBefore, cancelled: Task.isCancelled)
+            scanFinished(generation: generation, knownBefore: knownBefore, onlineBefore: onlineBefore,
+                         cancelled: Task.isCancelled)
         }
     }
 
@@ -241,14 +325,16 @@ final class AppModel {
         default:
             break
         }
-        inventory.apply(event)
-        scheduleFlush()
+        // Progress alone leaves the list as it is.
+        if !inventory.apply(event).isEmpty { scheduleFlush() }
     }
 
-    private func scanFinished(knownBefore: Set<String>, onlineBefore: [String: Bool], cancelled: Bool) {
+    private func scanFinished(generation: Int, knownBefore: Set<String>, onlineBefore: [String: Bool], cancelled: Bool) {
         isScanning = false
         phase = nil
         progress = 1
+        // Another store was loaded meanwhile; nothing below applies to it.
+        guard generation == storeGeneration else { return }
         // Watched devices that went online or offline. Skipped for the first scan after loading a network
         // (stored devices start out offline) and for scans that were cut short.
         if !cancelled, completedScans > 0 {
@@ -258,8 +344,11 @@ final class AppModel {
             if !changed.isEmpty { Notifier.notifyPresenceChanges(Array(changed)) }
         }
         if !cancelled {
-            if completedScans == 0 { reconcileStores() }
+            if completedScans == 0, shownRemoteSubnet == nil { reconcileStores() }
             completedScans += 1
+            if shownRemoteSubnet == nil, let iface = interface {
+                lanDNSServers = Self.dnsCandidates(in: inventory.allDevices, subnet: iface.subnet)
+            }
         }
         let created = Set(inventory.devices.keys).subtracting(knownBefore)
         let newOnline = created.compactMap { inventory.devices[$0] }.filter(\.isOnline)
@@ -340,8 +429,7 @@ final class AppModel {
     func clearResults() {
         stopScan()
         for d in inventory.allDevices {
-            if d.customName == nil && d.notes.isEmpty && !d.isFavorite && !d.isWatched && d.customKind == nil
-                && d.customURL == nil {
+            if !d.hasUserData {
                 inventory.remove(d.id)
             } else {
                 inventory.update(d.id) { $0.isOnline = false }
@@ -421,9 +509,20 @@ final class AppModel {
 
     // MARK: - Derived lists
 
+    private struct ListKey: Equatable {
+        var revision: Int
+        var hideIPv6Only: Bool
+        var sidebar: SidebarItem?
+        var search: String
+        var sortOrder: [KeyPathComparator<Device>]
+    }
+
     var visibleDevices: [Device] {
+        let key = ListKey(revision: listRevision, hideIPv6Only: Prefs.hideIPv6OnlyEnabled, sidebar: sidebar,
+                          search: searchText, sortOrder: sortOrder)
+        if let cache = visibleCache, cache.key == key { return cache.devices }
         var list = devices
-        if UserDefaults.standard.bool(forKey: Prefs.hideIPv6Only) { list.removeAll { $0.ipv4 == nil } }
+        if key.hideIPv6Only { list.removeAll { $0.ipv4 == nil } }
         switch sidebar ?? .all {
         case .all: break
         case .online: list.removeAll { !$0.isOnline }
@@ -439,19 +538,25 @@ final class AppModel {
                 return !terms.allSatisfy { text.contains($0) }
             }
         }
-        return list.sorted(using: sortOrder)
+        list.sort(using: sortOrder)
+        visibleCache = (key, list)
+        return list
     }
 
     var counts: SidebarCounts {
+        let hideIPv6Only = Prefs.hideIPv6OnlyEnabled
+        if let cache = countsCache, cache.revision == listRevision, cache.hideIPv6Only == hideIPv6Only {
+            return cache.counts
+        }
         var c = SidebarCounts()
-        let hideV6 = UserDefaults.standard.bool(forKey: Prefs.hideIPv6Only)
-        for d in devices where !(hideV6 && d.ipv4 == nil) {
+        for d in devices where !(hideIPv6Only && d.ipv4 == nil) {
             c.all += 1
             if d.isOnline { c.online += 1 } else { c.offline += 1 }
             if isRecent(d) { c.recent += 1 }
             if d.isFavorite { c.favorites += 1 }
             c.kinds[d.effectiveKind, default: 0] += 1
         }
+        countsCache = (listRevision, hideIPv6Only, c)
         return c
     }
 
@@ -659,10 +764,7 @@ final class AppModel {
 
     func exportCustomNames() -> [CustomNameRecord] {
         inventory.allDevices.compactMap { d in
-            guard d.customName != nil || !d.notes.isEmpty || d.customKind != nil || d.customURL != nil || d.isFavorite
-                || d.isWatched else {
-                return nil
-            }
+            guard d.hasUserData else { return nil }
             return CustomNameRecord(mac: d.mac?.description, ip: d.ipv4?.description, name: d.customName,
                                     notes: d.notes.isEmpty ? nil : d.notes, kind: d.customKind?.rawValue,
                                     url: d.customURL, favorite: d.isFavorite ? true : nil,

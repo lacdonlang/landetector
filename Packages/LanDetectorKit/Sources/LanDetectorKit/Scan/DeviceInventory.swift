@@ -4,6 +4,15 @@ public struct ScanContext: Sendable, Hashable {
     public let interface: NetworkInterface
     public let range: IPv4Range
     public let startedAt: Date
+
+    /// `false` for a range behind a router: this Mac and its gateway are not part of it, and nothing link-local
+    /// (ARP, NDP, multicast discovery) reaches this Mac from there.
+    public var isLocal: Bool { range.overlaps(interface.subnet) }
+
+    /// Addresses a scan reports on: the range, plus this Mac and its gateway when the range is local.
+    public func covers(_ ip: IPv4Address) -> Bool {
+        range.contains(ip) || (isLocal && (ip == interface.ipv4 || ip == interface.gateway))
+    }
 }
 
 public enum ScanPhase: String, Sendable {
@@ -250,10 +259,7 @@ public struct DeviceInventory: Sendable {
 
     // MARK: - Internals
 
-    private func accepts(_ ip: IPv4Address) -> Bool {
-        guard let context else { return true }
-        return context.range.contains(ip) || ip == context.interface.ipv4 || ip == context.interface.gateway
-    }
+    private func accepts(_ ip: IPv4Address) -> Bool { context?.covers(ip) ?? true }
 
     private mutating func insert(_ d: Device) {
         devices[d.id] = d

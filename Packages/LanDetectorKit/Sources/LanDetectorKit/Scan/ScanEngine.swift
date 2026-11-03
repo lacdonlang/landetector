@@ -12,6 +12,8 @@ public struct ScanOptions: Sendable, Codable, Hashable {
     public var useIPv6 = true
     /// Multiplier for waits/timeouts (0.6 = fast, 1 = normal, 2 = thorough).
     public var thoroughness: Double = 1
+    /// Asked for names the system resolver does not know, e.g. the router that leases out the scanned range.
+    public var extraDNSServers: [IPv4Address] = []
 
     public init() {}
 }
@@ -38,10 +40,17 @@ public final class ScanEngine: Sendable {
         let seen = Mutex<Set<IPv4Address>>([])
         let lastActivity = Mutex<ContinuousClock.Instant>(.now)
         let fetchedLocations = Mutex<Set<URL>>([])
+        let reportedNeighbors = Mutex<[IPv4Address: MACAddress]>([:])
         let outstanding = Atomic<Int>(0)
 
         func touch() { lastActivity.withLock { $0 = .now } }
         func isNew(_ ip: IPv4Address) -> Bool { seen.withLock { $0.insert(ip).inserted } }
+        /// Neighbour entries not reported yet this scan (or whose MAC changed): the ARP cache is polled repeatedly.
+        func unreported(_ entries: [ARPEntry]) -> [ARPEntry] {
+            reportedNeighbors.withLock { reported in
+                entries.filter { e in reported.updateValue(e.mac, forKey: e.ip) != e.mac }
+            }
+        }
     }
 
     private static func run(_ interface: NetworkInterface, options: ScanOptions,
@@ -53,10 +62,13 @@ public final class ScanEngine: Sendable {
         let range = fullRange.clamped(to: options.maxHosts, around: interface.ipv4)
         let hosts = Array(range)
         let context = ScanContext(interface: interface, range: range, startedAt: Date())
+        // Behind a router there is no ARP, no multicast discovery, no link-local IPv6 and no reason to list this Mac
+        // or its gateway.
+        let local = context.isLocal
         out.yield(.started(context))
         out.yield(.progress(0, .discovery))
         // The kernel never lists our own MAC usefully (macOS masks it), so add it from IOKit.
-        if let mac = interface.mac {
+        if local, let mac = interface.mac {
             out.yield(.neighbors([ARPEntry(ip: interface.ipv4, mac: mac, interface: interface.name,
                                            isPermanent: true, isFresh: true)], source: .sysctl))
         }
@@ -70,18 +82,21 @@ public final class ScanEngine: Sendable {
         // Probers.
         let netbios = options.useNetBIOS ? try? NetBIOSProber(interface: interface) : nil
         let mdns = options.useMDNS ? try? MDNSProber(interface: interface) : nil
-        let ssdp = options.useSSDP ? try? SSDPProber(interface: interface) : nil
+        let ssdp = options.useSSDP && local ? try? SSDPProber(interface: interface) : nil
         let icmp = try? ICMPProber()
-        let icmp6 = options.useIPv6 && interface.ipv6LinkLocal != nil ? ICMPv6Prober(interface: interface) : nil
+        let icmp6 = options.useIPv6 && local && interface.ipv6LinkLocal != nil ? ICMPv6Prober(interface: interface) : nil
+        let unicastDNS = options.useDNS ? UnicastDNS(servers: options.extraDNSServers) : nil
 
         let discovered: @Sendable (IPv4Address) -> Void = { ip in
-            guard range.contains(ip) || ip == interface.ipv4, state.isNew(ip) else { return }
+            guard context.covers(ip), state.isNew(ip) else { return }
             netbios?.probe(ip)
             mdns?.probe(ip)
             if options.useDNS {
                 state.outstanding.add(1, ordering: .relaxed)
                 Task.detached {
-                    if let name = await ReverseDNS.lookup(ip) { yield(.dnsName(ip, name)) }
+                    var name = await ReverseDNS.lookup(ip)
+                    if name == nil { name = await unicastDNS?.lookup(ip) }
+                    if let name { yield(.dnsName(ip, name)) }
                     state.outstanding.subtract(1, ordering: .relaxed)
                 }
             }
@@ -89,7 +104,7 @@ public final class ScanEngine: Sendable {
 
         netbios?.start { ip, info in yield(.netbios(ip, info)) }
         mdns?.start { ip, info in
-            guard range.contains(ip) || ip == interface.ipv4 else { return }
+            guard context.covers(ip) else { return }
             yield(.mdns(ip, info))
             discovered(ip)
         }
@@ -116,33 +131,40 @@ public final class ScanEngine: Sendable {
         icmp6?.start { ip, rtt in yield(.ipv6Alive(ip, rtt: rtt)) }
 
         // Kick off multicast discovery while the sweep runs.
-        mdns?.browse()
-        ssdp?.search()
-        icmp6?.probe()
-        discovered(interface.ipv4)
-        if let gw = interface.gateway { discovered(gw) }
+        if local {
+            mdns?.browse()
+            ssdp?.search()
+            icmp6?.probe()
+            discovered(interface.ipv4)
+            if let gw = interface.gateway { discovered(gw) }
+        }
 
         // ARP polling: picks up hosts that ignore ping.
         let neighborSource = Mutex<ARPTable.Source>(.unavailable)
-        let arpPoller = Task.detached {
-            while !Task.isCancelled {
-                let (entries, source) = ARPTable.read(interface: interface.name)
-                neighborSource.withLock { $0 = source }
-                let fresh = entries.filter { $0.isFresh && (range.contains($0.ip) || $0.ip == interface.ipv4) }
-                if !fresh.isEmpty {
-                    out.yield(.neighbors(fresh, source: source))
-                    for e in fresh { discovered(e.ip) }
-                }
-                try? await Task.sleep(for: .milliseconds(450))
+        let readNeighbors: @Sendable () -> Void = {
+            let (entries, source) = ARPTable.read(interface: interface.name)
+            neighborSource.withLock { $0 = source }
+            let fresh = state.unreported(entries.filter { $0.isFresh && context.covers($0.ip) })
+            if !fresh.isEmpty {
+                out.yield(.neighbors(fresh, source: source))
+                for e in fresh { discovered(e.ip) }
             }
         }
+        let arpPoller = local ? Task.detached {
+            while !Task.isCancelled {
+                readNeighbors()
+                try? await Task.sleep(for: .milliseconds(450))
+            }
+        } : nil
 
         // Sweep twice: the second pass catches hosts whose first packet was lost during ARP resolution.
         await icmp?.sweep(hosts) { p in out.yield(.progress(p * 0.35, .discovery)) }
         try? await Task.sleep(for: .milliseconds(Int(500 * scale)))
-        mdns?.browse()
-        ssdp?.search()
-        icmp6?.probe()
+        if local {
+            mdns?.browse()
+            ssdp?.search()
+            icmp6?.probe()
+        }
         if !Task.isCancelled {
             await icmp?.sweep(hosts) { p in out.yield(.progress(0.35 + p * 0.2, .discovery)) }
         }
@@ -164,12 +186,12 @@ public final class ScanEngine: Sendable {
             try? await Task.sleep(for: .milliseconds(200))
         }
 
-        arpPoller.cancel()
         // Final neighbour tables.
-        let (entries, source) = ARPTable.read(interface: interface.name)
-        let fresh = entries.filter { $0.isFresh && (range.contains($0.ip) || $0.ip == interface.ipv4) }
-        if !fresh.isEmpty { out.yield(.neighbors(fresh, source: source)) }
-        if options.useIPv6 {
+        if let arpPoller {
+            arpPoller.cancel()
+            readNeighbors()
+        }
+        if options.useIPv6 && local {
             let ndp = NDPTable.read(interface: interface)
             if !ndp.isEmpty { out.yield(.ndp(ndp)) }
         }
@@ -179,13 +201,14 @@ public final class ScanEngine: Sendable {
         mdns?.close()
         netbios?.close()
         ssdp?.close()
+        unicastDNS?.close()
 
         let elapsed = clock.now - start
         out.yield(.progress(1, .finishing))
         out.yield(.finished(ScanSummary(
             duration: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18,
             hostsProbed: hosts.count,
-            neighborSource: neighborSource.withLock { $0 } == .unavailable ? source : neighborSource.withLock { $0 })))
+            neighborSource: neighborSource.withLock { $0 })))
     }
 }
 

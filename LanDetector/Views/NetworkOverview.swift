@@ -84,7 +84,7 @@ struct NetworkOverview: View {
     private var header: some View {
         if let iface = model.interface {
             HStack(spacing: 12) {
-                Image(systemName: iface.kind.symbol)
+                Image(systemName: model.shownRemoteSubnet == nil ? iface.kind.symbol : "network")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
@@ -92,10 +92,18 @@ struct NetworkOverview: View {
                                                endPoint: .bottom),
                                 in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(iface.displayName).font(.title3.weight(.semibold))
-                    Text(verbatim: NetworkMatcher.subnetKey(iface.ipv4, netmask: iface.netmask))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                    if let remote = model.shownRemoteSubnet {
+                        // A range behind a router: name it after the preset, and say how it is reached.
+                        Text(model.selectedRange?.name.nilIfEmpty ?? remote).font(.title3.weight(.semibold))
+                        Text(verbatim: "\(remote) · 经由 \(iface.displayName)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(iface.displayName).font(.title3.weight(.semibold))
+                        Text(verbatim: NetworkMatcher.subnetKey(iface.ipv4, netmask: iface.netmask))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .padding(.vertical, 2)
@@ -118,7 +126,8 @@ struct NetworkOverview: View {
     }
 
     private var sourceText: String {
-        switch model.lastScan?.neighborSource {
+        if model.shownRemoteSubnet != nil { return "跨路由，无法获取" }
+        return switch model.lastScan?.neighborSource {
         case .sysctl: "系统 ARP 表"
         case .arpCommand: "arp 命令"
         case .unavailable: "不可用（需要 Developer ID 签名）"

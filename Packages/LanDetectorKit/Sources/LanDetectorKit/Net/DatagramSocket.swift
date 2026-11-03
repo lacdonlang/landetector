@@ -49,12 +49,14 @@ public final class DatagramSocket: @unchecked Sendable {
     public let fd: Int32
     public let family: Int32
     public let queue: DispatchQueue
+    private let onQueue = DispatchSpecificKey<Bool>()
     private var source: DispatchSourceRead?
     private var closed = false
 
     public init(family: Int32 = AF_INET, protocol proto: Int32 = IPPROTO_UDP, label: String) throws {
         self.family = family
         queue = DispatchQueue(label: "landetector.socket.\(label)", qos: .userInitiated)
+        queue.setSpecific(key: onQueue, value: true)
         fd = socket(family, SOCK_DGRAM, proto)
         guard fd >= 0 else { throw SocketError.create(errno) }
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
@@ -178,8 +180,9 @@ public final class DatagramSocket: @unchecked Sendable {
         source.resume()
     }
 
+    /// Safe on `queue` too: a prober whose last reference goes away in one of its own queue blocks closes from there.
     public func close() {
-        queue.sync {
+        let shutDown = { [self] in
             guard !closed else { return }
             closed = true
             if let source {
@@ -188,5 +191,6 @@ public final class DatagramSocket: @unchecked Sendable {
                 Darwin.close(fd)
             }
         }
+        if DispatchQueue.getSpecific(key: onQueue) == true { shutDown() } else { queue.sync(execute: shutDown) }
     }
 }

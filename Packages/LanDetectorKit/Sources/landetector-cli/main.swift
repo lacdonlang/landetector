@@ -3,7 +3,7 @@ import LanDetectorKit
 
 // Command line harness for the scan engine.
 //   landetector-cli interfaces
-//   landetector-cli scan [en0] [--range 192.168.1.1-254] [--verbose]
+//   landetector-cli scan [en0] [--range 192.168.1.1-254] [--dns 192.168.1.1,…] [--verbose]
 //   landetector-cli ports <ip> [common|well-known|all|22,80,443]
 
 func pad(_ s: String, _ n: Int) -> String {
@@ -29,6 +29,9 @@ case "scan":
     }
     var options = ScanOptions()
     if let i = args.firstIndex(of: "--range"), i + 1 < args.count { options.range = IPv4Range(string: args[i + 1]) }
+    if let i = args.firstIndex(of: "--dns"), i + 1 < args.count {
+        options.extraDNSServers = args[i + 1].split(separator: ",").compactMap { IPv4Address(String($0)) }
+    }
     let verbose = args.contains("--verbose")
     print("Scanning \(iface.name) \(iface.cidr) gw \(iface.gateway?.description ?? "-")…")
     let t0 = Date()

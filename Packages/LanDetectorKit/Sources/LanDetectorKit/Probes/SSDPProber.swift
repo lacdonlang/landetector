@@ -167,3 +167,91 @@ public enum ReverseDNS {
         }
     }
 }
+
+/// Reverse lookups against particular DNS servers. The router that leases out a subnet usually knows its clients'
+/// names, but the system resolver only asks the servers it was configured with – often another box, which has no
+/// answer for addresses behind a different router.
+///
+/// One socket serves every lookup of a scan; replies are matched to lookups by DNS ID.
+public final class UnicastDNS: @unchecked Sendable {
+    private struct Lookup {
+        var query: [UInt8]
+        var continuation: CheckedContinuation<String?, Never>
+        var answered: Set<IPv4Address> = []
+    }
+
+    private static let attempts = 3
+    private static let retryInterval = DispatchTimeInterval.milliseconds(400)
+
+    private let socket: DatagramSocket
+    private let servers: Set<IPv4Address>
+
+    // State – confined to `socket.queue`.
+    private var lookups: [UInt16: Lookup] = [:]
+    private var nextID = UInt16.random(in: 1...UInt16.max)
+    private var closed = false
+
+    /// `nil` without servers to ask.
+    public init?(servers: [IPv4Address]) {
+        guard !servers.isEmpty, let socket = try? DatagramSocket(label: "dns") else { return nil }
+        self.socket = socket
+        self.servers = Set(servers)
+        socket.startReceiving { [weak self] data, from in
+            guard let self, case .v4(let server, _) = from, self.servers.contains(server),
+                  let message = DNSCodec.decode(data), message.isResponse else { return }
+            self.handle(message, from: server)
+        }
+    }
+
+    /// The first name any server returns; `nil` once all of them answered without one, after the last retry, or
+    /// when the prober is closed.
+    public func lookup(_ ip: IPv4Address) async -> String? {
+        await withCheckedContinuation { continuation in
+            socket.queue.async { [self] in
+                guard !closed else { return continuation.resume(returning: nil) }
+                nextID &+= 1
+                let query = DNSCodec.query(id: nextID, recursionDesired: true, [DNSQuestion(ip.reverseDNSName, .ptr)])
+                lookups[nextID] = Lookup(query: query, continuation: continuation)
+                send(nextID, attempt: 1)
+            }
+        }
+    }
+
+    public func close() {
+        socket.queue.sync {
+            closed = true
+            for lookup in lookups.values { lookup.continuation.resume(returning: nil) }
+            lookups = [:]
+        }
+        socket.close()
+    }
+
+    // MARK: - On socket queue
+
+    /// Datagrams get lost – above all while a scan floods the link – so servers that stay silent are asked again.
+    private func send(_ id: UInt16, attempt: Int) {
+        guard let lookup = lookups[id] else { return }
+        guard attempt <= Self.attempts else { return finish(id, nil) }
+        for server in servers.subtracting(lookup.answered) { socket.send(lookup.query, to: server, port: 53) }
+        socket.queue.asyncAfter(deadline: .now() + Self.retryInterval) { [self] in send(id, attempt: attempt + 1) }
+    }
+
+    private func handle(_ message: DNSMessage, from server: IPv4Address) {
+        guard var lookup = lookups[message.id] else { return }
+        for record in message.answers {
+            guard case .ptr(let target) = record.data else { continue }
+            let host = target.dnsUnescaped.trimmingDot
+            if !host.isEmpty, IPv4Address(host) == nil { return finish(message.id, host) }
+        }
+        lookup.answered.insert(server)
+        if lookup.answered.count == servers.count {
+            finish(message.id, nil)
+        } else {
+            lookups[message.id] = lookup
+        }
+    }
+
+    private func finish(_ id: UInt16, _ name: String?) {
+        lookups.removeValue(forKey: id)?.continuation.resume(returning: name)
+    }
+}

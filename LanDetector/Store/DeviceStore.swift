@@ -122,6 +122,22 @@ enum NetworkIdentity {
         }.value
     }
 
+    /// The stored network a range behind a router belongs to (see `NetworkMatcher.store(behind:)`), or a new, empty one.
+    static func resolve(remote range: IPv4Range, from interface: NetworkInterface) async -> NetworkResolution {
+        let subnet = range.coveringSubnet
+        return await Task.detached(priority: .userInitiated) {
+            // The local ARP cache shows the routers this Mac can see – one of them may also serve the range.
+            let localMACs = Set(ARPTable.read(interface: interface.name).entries.map(\.mac))
+            let stores = DeviceStore.all()
+            let key = NetworkMatcher.store(behind: range, localMACs: localMACs, stores: stores.map(\.fingerprint))
+            guard let store = stores.first(where: { $0.key == key }) else {
+                return NetworkResolution(key: "range-\(subnet)", subnet: subnet, devices: [], gatewayMACs: [], mergedKeys: [])
+            }
+            return NetworkResolution(key: store.key, subnet: store.subnet ?? subnet, devices: store.devices,
+                                     gatewayMACs: Set(store.fingerprint.gatewayMACs.map(\.description)), mergedKeys: [])
+        }.value
+    }
+
     /// After a full scan: other stores that turn out to be this network, given everything the scan saw.
     /// Returns their devices (newest store first) and retires them.
     static func strayStores(of key: String, interface: NetworkInterface, subnet: String, visible: Set<MACAddress>,

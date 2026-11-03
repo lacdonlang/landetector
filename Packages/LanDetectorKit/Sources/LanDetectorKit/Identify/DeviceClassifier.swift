@@ -15,8 +15,13 @@ public struct Identification: Sendable, Hashable {
 public enum DeviceClassifier {
     public static func identify(_ d: Device) -> Identification {
         var votes: [DeviceKind: Double] = [:]
+        /// Order in which kinds got their first vote; signals are checked from most to least authoritative.
+        var firstVote: [DeviceKind: Int] = [:]
         var result = Identification()
-        func vote(_ kind: DeviceKind, _ weight: Double) { votes[kind, default: 0] += weight }
+        func vote(_ kind: DeviceKind, _ weight: Double) {
+            votes[kind, default: 0] += weight
+            if firstVote[kind] == nil { firstVote[kind] = firstVote.count }
+        }
 
         let txt = TXTIndex(d.services)
 
@@ -159,8 +164,11 @@ public enum DeviceClassifier {
             }
         }
 
-        // Pick the winner.
-        if let (kind, score) = votes.max(by: { $0.value < $1.value }) {
+        // Pick the winner. A tie goes to the kind the earlier, more authoritative signal voted for – not to whatever
+        // the dictionary happens to list last.
+        if let (kind, score) = votes.max(by: { a, b in
+            a.value != b.value ? a.value < b.value : firstVote[a.key, default: 0] > firstVote[b.key, default: 0]
+        }) {
             result.kind = kind
             let total = votes.values.reduce(0, +)
             result.confidence = min(1, score / 10) * (score / max(total, 0.001))
@@ -357,6 +365,8 @@ public enum DeviceClassifier {
           "speaker", "xiaoai", "小爱"], .speaker),
         (["nest-hub", "nesthub", "thermostat", "ecobee", "vacuum", "roborock", "roomba", "dreame", "hue-bridge",
           "philips-hue", "homey", "smartthings", "aqara", "gateway-zigbee"], .smartHome),
+        // Xiaomi ecosystem (MIoT) host names: "zhimi-airp-sa4_mibtAC1B", "chuangmi-plug-v3_miio123456".
+        (["_miio", "_mibt", "zhimi-", "chuangmi-", "yeelink-", "lumi-", "dmaker-", "viomi-", "mijia"], .smartHome),
         (["doorbell", "ipcam", "ip-cam", "camera", "-cam", "cam-", "hikvision", "dahua", "reolink", "ezviz", "wyze",
           "blink", "arlo"], .camera),
         (["printer", "laserjet", "officejet", "deskjet", "envy", "epson", "brother", "canon", "mfc-", "hl-", "ecotank",

@@ -46,9 +46,7 @@ public enum NetworkMatcher {
         let visible = visibleMACs.subtracting(selfMAC.map { [$0] } ?? [])
         func sameSubnet(_ s: NetworkFingerprint) -> Bool {
             if let stored = s.subnet { return stored == subnet }
-            // Older stores: most of their devices sit inside the current range.
-            let inside = s.deviceIPs.filter(range.contains).count
-            return inside > 0 && inside * 2 >= s.deviceIPs.count
+            return mostlyInside(s, range)
         }
         let matching = stores.filter { s in
             guard sameSubnet(s) else { return false }
@@ -64,6 +62,32 @@ public enum NetworkMatcher {
             return Decision(key: latest.key, merge: [])
         }
         return Decision(key: nil, merge: [])
+    }
+
+    /// The stored network a range behind a router belongs to: its subnet holds the whole range (older stores
+    /// without a subnet: most of their devices sit inside the range). A store whose gateway this Mac can see on its
+    /// own LAN wins – one router serving both subnets – then the most recently saved one.
+    public static func store(behind range: IPv4Range, localMACs: Set<MACAddress>, stores: [NetworkFingerprint]) -> String? {
+        let candidates = stores.filter { s in
+            guard let stored = s.subnet else { return mostlyInside(s, range) }
+            return IPv4Range(string: stored).map { $0.contains(range.lower) && $0.contains(range.upper) } ?? false
+        }
+        return candidates.max { a, b in
+            let seenA = !a.gatewayMACs.isDisjoint(with: localMACs), seenB = !b.gatewayMACs.isDisjoint(with: localMACs)
+            return seenA != seenB ? seenB : a.savedAt < b.savedAt
+        }?.key
+    }
+
+    /// Devices a range scan behind a router left in a network's store before such scans got stores of their own:
+    /// no MAC, an address outside the network, nothing the user entered.
+    public static func removingRemoteLeftovers(_ devices: [Device], subnet: IPv4Range) -> [Device] {
+        devices.filter { d in d.mac != nil || d.hasUserData || d.ipv4.map(subnet.contains) ?? true }
+    }
+
+    /// For stores written before the subnet was recorded: most of their devices sit inside `range`.
+    private static func mostlyInside(_ s: NetworkFingerprint, _ range: IPv4Range) -> Bool {
+        let inside = s.deviceIPs.count(where: range.contains)
+        return inside > 0 && inside * 2 >= s.deviceIPs.count
     }
 
     /// Combines device lists of stores that turned out to be one network. Earlier lists win on conflicting values,

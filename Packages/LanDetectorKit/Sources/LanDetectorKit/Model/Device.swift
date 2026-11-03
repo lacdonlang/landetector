@@ -95,6 +95,11 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
     /// Notify when a completed scan finds this device going online or offline.
     public var isWatched: Bool
 
+    /// Carries something the user entered, so it is never dropped automatically.
+    public var hasUserData: Bool {
+        customName != nil || !notes.isEmpty || isFavorite || isWatched || customKind != nil || customURL != nil
+    }
+
     // Status.
     public var firstSeen: Date
     public var lastSeen: Date

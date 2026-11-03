@@ -117,7 +117,11 @@ struct DeviceListContainer: View {
                 if model.isScanning { ScanProgressBar(progress: model.progress) }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                if showsMACWarning { MACWarningBanner() }
+                if let subnet = model.shownRemoteSubnet {
+                    RemoteRangeBanner(subnet: subnet, hasHistory: model.devices.contains { $0.mac != nil })
+                } else if showsMACWarning {
+                    MACWarningBanner()
+                }
             }
             // Neither the list nor anything above it may report an ideal width: the split view sizes the
             // detail column from it, and with the inspector open a narrowing window would otherwise
@@ -154,16 +158,45 @@ private struct ScanProgressBar: View {
     }
 }
 
+/// A range behind a router: says what cannot be seen from here, so "未知" does not read as a fault.
+private struct RemoteRangeBanner: View {
+    let subnet: String
+    let hasHistory: Bool
+
+    var body: some View {
+        ListBanner(text: message, symbol: "network", style: .secondary, background: .accentColor.opacity(0.08))
+    }
+
+    private var message: String {
+        let reason = "跨路由扫描 \(subnet)：隔着路由器拿不到 MAC 和 Bonjour 信息"
+        return hasHistory ? reason + "，厂商、型号沿用上次直连该网络时的记录，名称向路由器查询。"
+                          : reason + "，名称向路由器查询；直连该网络扫描一次即可识别厂商与类型。"
+    }
+}
+
 private struct MACWarningBanner: View {
     var body: some View {
-        Label("读不到 MAC 地址：macOS 27 只向 Developer ID 签名的应用开放 ARP 表，厂商识别和设备合并会受影响。",
-              systemImage: "exclamationmark.triangle.fill")
+        ListBanner(text: "读不到 MAC 地址：macOS 27 只向 Developer ID 签名的应用开放 ARP 表，厂商识别和设备合并会受影响。",
+                   symbol: "exclamationmark.triangle.fill", style: .orange, background: .orange.opacity(0.12))
+    }
+}
+
+/// A one-line note above the list.
+private struct ListBanner<Style: ShapeStyle>: View {
+    let text: String
+    let symbol: String
+    let style: Style
+    let background: Color
+
+    var body: some View {
+        Label(text, systemImage: symbol)
             .font(.callout)
-            .foregroundStyle(.orange)
+            .foregroundStyle(style)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.orange.opacity(0.12))
+            // Only behind the banner: by default a background would also tint the toolbar above it.
+            .background(background, ignoresSafeAreaEdges: [])
     }
 }
 
@@ -205,10 +238,15 @@ struct DeviceListContent: View {
                     }
                 }
             } else {
-                switch model.viewMode {
-                case .table: DeviceTableView(devices: devices)
-                case .grid: DeviceGridView(devices: devices)
+                Group {
+                    switch model.viewMode {
+                    case .table: DeviceTableView(devices: devices)
+                    case .grid: DeviceGridView(devices: devices)
+                    }
                 }
+                // Another network's store is a new list, not an edit of this one: replacing every row of a live
+                // table that still has a selection makes AppKit report a reentrant delegate. Also starts at the top.
+                .id(model.networkKey)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

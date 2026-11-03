@@ -15,6 +15,9 @@ enum DebugSnapshot {
                 await runWidthTest()
             }
         }
+        if ProcessInfo.processInfo.environment["LANDETECTOR_RANGE_TEST"] != nil {
+            Task { @MainActor in await runRangeTest() }
+        }
         if ProcessInfo.processInfo.environment["LANDETECTOR_TOOLBAR_TEST"] != nil {
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(9))
@@ -109,6 +112,50 @@ enum DebugSnapshot {
             }
         }
         FileHandle.standardError.write(Data("WIDTH TEST distinct layouts: \(seen.count)\n".utf8))
+    }
+
+    /// Switches from the selected range to the whole subnet and back, logging which store the list shows and what
+    /// its online devices are known as. Run it with a preset behind a router selected.
+    static func runRangeTest() async {
+        let model = AppModel.shared
+        let presetID = model.selectedRangeID
+        func settle() async {
+            let start = Date()
+            try? await Task.sleep(for: .seconds(1))
+            while Date().timeIntervalSince(start) < 90 {
+                if !model.isScanning, let done = model.lastScanDate, done > start { break }
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            try? await Task.sleep(for: .seconds(1.5)) // let the save land
+        }
+        func log(_ tag: String) {
+            let devices = model.devices
+            let outside = model.interface.map { iface in
+                devices.filter { d in d.ipv4.map { !iface.subnet.contains($0) } ?? false }.count
+            } ?? 0
+            var lines = ["range \(tag): key=\(model.networkKey ?? "-") remote=\(model.shownRemoteSubnet ?? "-") "
+                + "devices=\(devices.count) online=\(devices.filter(\.isOnline).count) "
+                + "withMAC=\(devices.filter { $0.mac != nil }.count) outsideLocalSubnet=\(outside)"]
+            for d in devices.sorted(by: { ($0.ipv4?.value ?? 0) < ($1.ipv4?.value ?? 0) }) where d.isOnline {
+                lines.append("   \(d.ipv4?.description ?? "-") \(d.displayName) · \(d.effectiveKind.title) · "
+                    + "\(d.vendor ?? "-") · dns=\(d.dnsName ?? "-")")
+            }
+            FileHandle.standardError.write(Data((lines.joined(separator: "\n") + "\n").utf8))
+        }
+        await settle()
+        log("preset")
+        model.selectRange(nil)
+        await settle()
+        log("whole subnet")
+        // Switch away with a device selected, as a user would.
+        FileHandle.standardError.write(Data("range: selecting a device\n".utf8))
+        if let first = model.visibleDevices.first { model.selection = [first.id] }
+        try? await Task.sleep(for: .milliseconds(800))
+        FileHandle.standardError.write(Data("range: switching back with a device selected\n".utf8))
+        model.selectRange(presetID)
+        await settle()
+        log("preset again")
+        FileHandle.standardError.write(Data("RANGE TEST DONE\n".utf8))
     }
 
     /// Logs which column each toolbar control sits over, with the inspector shown and hidden.

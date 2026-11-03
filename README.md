@@ -7,11 +7,11 @@ Swift 6 + SwiftUI（macOS 26 Liquid Glass），无任何第三方依赖或统计
 
 | 能力 | LanScan | LanDetector |
 |---|---|---|
-| IPv4 子网 / 自定义区间扫描 | ✓ | ✓ 约 4 秒扫完 /24，首个结果 < 0.1 秒；可保存多个命名区间，侧栏网络菜单一键切换 |
+| IPv4 子网 / 自定义区间扫描 | ✓ | ✓ 约 4 秒扫完 /24，首个结果 < 0.1 秒；可保存多个命名区间，侧栏网络菜单一键切换；跨路由扫描其他网段时沿用该网段自己的设备库 |
 | ARP / MAC 获取 | ✓（macOS 27 被系统屏蔽） | ✓ sysctl + `arp` 回退，按过期时间判断新鲜度 |
 | ICMP 存活 + 延迟 | ✓ | ✓ 延迟曲线、持续 Ping |
 | IPv6 本地 / 全局地址 | ✓ | ✓ 组播发现 + NDP + EUI-64 反推 MAC |
-| DNS / mDNS / SMB 主机名 | ✓ | ✓ |
+| DNS / mDNS / SMB 主机名 | ✓ | ✓ 系统 DNS 查不到时再问局域网里的路由器（DHCP 租约里的主机名，跨网段同样有效） |
 | 厂商（IEEE 全部注册表） | ✓ | ✓ 可在线更新 |
 | 设备识别 (NDI) | 付费、按期购买 | ✓ Bonjour TXT + AppleDB 型号 + UPnP + NetBIOS + 主机名 + 厂商 + 端口 + Banner 多信号融合 |
 | UPnP / SSDP | ✗ | ✓ 友好名称、制造商、型号 |
@@ -49,6 +49,10 @@ Scripts/cli.sh scan --verbose
 ```
 
 ```bash
+Scripts/cli.sh scan --range 192.168.77.1/24 --dns 192.168.99.1
+```
+
+```bash
 Scripts/cli.sh ports 192.168.1.1 common
 ```
 
@@ -62,6 +66,7 @@ Debug 构建内置几个由环境变量开启的自检钩子（`LanDetector/Supp
 - `LANDETECTOR_GALLERY_DIR=<目录>`：把侧栏、检查器（本机 / 网关 / 普通设备、深浅色）、设置各页、端口扫描面板、菜单栏面板分别放进普通离屏窗口渲染，弥补上一项拍不到玻璃面板的不足；主窗口按 1440 宽截图。
 - `LANDETECTOR_WIDTH_TEST=1`：在列表、卡片视图中依次选中每台设备并记录各栏宽度，检查器宽度必须始终不变。
 - `LANDETECTOR_TOOLBAR_TEST=1`：记录每个工具栏项位于哪一栏（检查器显示 / 隐藏各一次），并验证搜索框输入能筛选列表、⌘F 能聚焦搜索框。玻璃材质截不到图，工具栏布局以这里的坐标为准。
+- `LANDETECTOR_RANGE_TEST=1`：选中一个跨路由的范围预设后启动，自动切到"整个子网"再切回来，记录每次显示的设备库与在线设备的名称、类型、厂商。
 - `LANDETECTOR_RESIZE_TEST=1`（可加 `LANDETECTOR_CHAOS=1`）：反复缩放窗口并切换视图与检查器，用于回归 SwiftUI 布局循环崩溃。详情列内容必须保持 `idealWidth: 0`，否则检查器打开时窗口变窄会触发 AppKit "Update Constraints" 死循环。
 
 ```bash
