@@ -10,9 +10,9 @@ struct SettingsView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            Tab("通用", systemImage: "gearshape", value: .general) { GeneralSettings() }
-            Tab("扫描", systemImage: "dot.radiowaves.left.and.right", value: .scan) { ScanSettings() }
-            Tab("数据", systemImage: "externaldrive", value: .data) { DataSettings() }
+            Tab("General", systemImage: "gearshape", value: .general) { GeneralSettings() }
+            Tab("Scanning", systemImage: "dot.radiowaves.left.and.right", value: .scan) { ScanSettings() }
+            Tab("Data", systemImage: "externaldrive", value: .data) { DataSettings() }
         }
         .frame(width: 560, height: 470)
     }
@@ -30,15 +30,15 @@ private struct GeneralSettings: View {
     var body: some View {
         Form {
             Section {
-                Toggle("启动时自动扫描", isOn: $autoScan)
-                Toggle("在菜单栏显示图标", isOn: $showMenuBar)
-                Toggle("实时监控发现新设备时发送通知", isOn: $notify)
+                Toggle("Scan automatically at launch", isOn: $autoScan)
+                Toggle("Show icon in menu bar", isOn: $showMenuBar)
+                Toggle("Notify when live monitoring finds new devices", isOn: $notify)
                     .onChange(of: notify) { _, on in if on { Notifier.requestAuthorization() } }
             }
             Section {
-                Toggle("隐藏仅有 IPv6 地址的设备", isOn: $hideIPv6Only)
-                Toggle("用强调色显示自定义名称", isOn: $highlightCustom)
-                LabeledContent("列表字号") {
+                Toggle("Hide devices with only IPv6 addresses", isOn: $hideIPv6Only)
+                Toggle("Show custom names in accent color", isOn: $highlightCustom)
+                LabeledContent("List text size") {
                     @Bindable var model = model
                     Slider(value: $model.textScale, in: 0.85...1.4, step: 0.05) {
                         EmptyView()
@@ -51,10 +51,10 @@ private struct GeneralSettings: View {
                 }
             }
             Section {
-                Toggle("查询公网 IP 与运营商", isOn: $lookupPublicIP)
+                Toggle("Look up public IP and ISP", isOn: $lookupPublicIP)
                     .onChange(of: lookupPublicIP) { _, _ in model.refreshPublicIP() }
             } footer: {
-                Text("会向 ipify.org 与 ipwho.is 发送请求。关闭后 LanDetector 不会访问任何外部服务。")
+                Text("Sends requests to ipify.org and ipwho.is. When off, LanDetector doesn’t contact any external service.")
             }
         }
         .formStyle(.grouped)
@@ -76,8 +76,8 @@ private struct ScanSettings: View {
         @Bindable var model = model
         Form {
             Section {
-                Picker("当前范围", selection: $model.selectedRangeID) {
-                    Text("整个子网").tag(UUID?.none)
+                Picker("Current range", selection: $model.selectedRangeID) {
+                    Text("Entire Subnet").tag(UUID?.none)
                     ForEach(model.rangePresets) { preset in
                         Text(preset.title).tag(UUID?.some(preset.id))
                     }
@@ -89,34 +89,34 @@ private struct ScanSettings: View {
                         model.rangePresets.removeAll { $0.id == preset.id }
                     }
                 }
-                Button("添加范围…", systemImage: "plus") { editing = RangePreset(name: "", range: "") }
+                Button("Add Range…", systemImage: "plus") { editing = RangePreset(name: "", range: "") }
             } header: {
-                Text("扫描范围")
+                Text("Scan Range")
             } footer: {
-                Text("也可以在工具栏的网络菜单中切换范围，切换后立即扫描。")
+                Text("You can also switch ranges from the network menu in the toolbar; switching starts a scan right away.")
             }
-            Section("扫描方式") {
-                Picker("强度", selection: $thoroughness) {
-                    Text("快速").tag(0.6)
-                    Text("标准").tag(1.0)
-                    Text("深入").tag(2.0)
+            Section("Scan Methods") {
+                Picker("Thoroughness", selection: $thoroughness) {
+                    Text("Fast").tag(0.6)
+                    Text("Standard").tag(1.0)
+                    Text("Thorough").tag(2.0)
                 }
                 .pickerStyle(.segmented)
-                Toggle("mDNS / Bonjour（主机名、服务、型号）", isOn: $useMDNS)
-                Toggle("NetBIOS（Windows / SMB 名称）", isOn: $useNetBIOS)
-                Toggle("DNS 反向解析", isOn: $useDNS)
-                Toggle("UPnP / SSDP（智能电视、路由器、NAS）", isOn: $useSSDP)
-                Toggle("IPv6 邻居发现", isOn: $useIPv6)
+                Toggle("mDNS / Bonjour (host names, services, models)", isOn: $useMDNS)
+                Toggle("NetBIOS (Windows / SMB names)", isOn: $useNetBIOS)
+                Toggle("Reverse DNS lookup", isOn: $useDNS)
+                Toggle("UPnP / SSDP (smart TVs, routers, NAS)", isOn: $useSSDP)
+                Toggle("IPv6 neighbor discovery", isOn: $useIPv6)
             }
-            Section("实时监控") {
-                Picker("完整扫描间隔", selection: $liveInterval) {
-                    Text("30 秒").tag(30.0)
-                    Text("1 分钟").tag(60.0)
-                    Text("2 分钟").tag(120.0)
-                    Text("5 分钟").tag(300.0)
-                    Text("10 分钟").tag(600.0)
+            Section("Live Monitoring") {
+                Picker("Full scan interval", selection: $liveInterval) {
+                    Text("30 seconds").tag(30.0)
+                    Text("1 minute").tag(60.0)
+                    Text("2 minutes").tag(120.0)
+                    Text("5 minutes").tag(300.0)
+                    Text("10 minutes").tag(600.0)
                 }
-                Text("两次完整扫描之间，每 10 秒刷新一次在线设备的延迟。")
+                Text("Between full scans, the latency of online devices is refreshed every 10 seconds.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -146,18 +146,18 @@ private struct RangePresetRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(preset.title)
                 if let range = preset.ipv4Range {
-                    Text((preset.name.isEmpty ? "" : "\(preset.range) · ") + "\(range.count) 个地址")
+                    Text((preset.name.isEmpty ? "" : "\(preset.range) · ") + String(localized: "\(range.count) addresses"))
                         .font(.caption)
                         .foregroundStyle(range.count > ScanOptions().maxHosts ? .orange : .secondary)
                 } else {
-                    Text("格式无效：\(preset.range)").font(.caption).foregroundStyle(.red)
+                    Text("Invalid format: \(preset.range)").font(.caption).foregroundStyle(.red)
                 }
             }
             Spacer()
-            Button("编辑", systemImage: "pencil", action: onEdit)
-                .help("编辑")
-            Button("删除", systemImage: "trash", role: .destructive, action: onDelete)
-                .help("删除")
+            Button("Edit", systemImage: "pencil", action: onEdit)
+                .help("Edit")
+            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+                .help("Delete")
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
@@ -177,18 +177,19 @@ private struct RangePresetEditor: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    TextField("名称", text: $preset.name, prompt: Text("例如：办公室"))
-                    TextField("范围", text: $preset.range, prompt: Text("192.168.1.1-254 或 10.0.0.0/22"))
+                    TextField("Name", text: $preset.name, prompt: Text("e.g. Office"))
+                    TextField("Range", text: $preset.range, prompt: Text("192.168.1.1-254 or 10.0.0.0/22"))
                 } footer: {
                     Group {
                         if let range {
-                            Text("\(range.description) · \(range.count) 个地址"
-                                + (range.count > limit ? "，只扫描最靠近本机的 \(limit) 个" : ""))
+                            Text(range.count > limit
+                                 ? String(localized: "\(range.description) · \(range.count) addresses; only the \(limit) nearest this Mac are scanned")
+                                 : range.description + " · " + String(localized: "\(range.count) addresses"))
                                 .foregroundStyle(range.count > limit ? .orange : .secondary)
                         } else if preset.range.isEmpty {
-                            Text("起止地址（192.168.1.10-200、10.0.0.5-10.0.1.4）或 CIDR（10.0.0.0/22）。")
+                            Text("A start–end range (192.168.1.10-200, 10.0.0.5-10.0.1.4) or CIDR (10.0.0.0/22).")
                         } else {
-                            Text("格式无效").foregroundStyle(.red)
+                            Text("Invalid format").foregroundStyle(.red)
                         }
                     }
                     // Two lines either way, so the sheet does not jump while typing.
@@ -198,9 +199,9 @@ private struct RangePresetEditor: View {
             .formStyle(.grouped)
             HStack {
                 Spacer()
-                Button("取消", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button(isNew ? "添加" : "存储") {
+                Button(isNew ? String(localized: "Add") : String(localized: "Save")) {
                     preset.name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
                     preset.range = preset.range.trimmingCharacters(in: .whitespacesAndNewlines)
                     onSave(preset)
@@ -223,41 +224,41 @@ private struct DataSettings: View {
 
     var body: some View {
         Form {
-            Section("自定义名称") {
+            Section("Custom Names") {
                 HStack {
-                    Button("导出…") { Exporter.exportCustomNames(model.exportCustomNames()) }
-                    Button("软导入…") { importNames(overwrite: false) }
-                        .help("冲突时保留当前名称与备注")
-                    Button("硬导入…") { importNames(overwrite: true) }
-                        .help("冲突时使用导入文件中的名称与备注")
+                    Button("Export…") { Exporter.exportCustomNames(model.exportCustomNames()) }
+                    Button("Import (Keep Existing)…") { importNames(overwrite: false) }
+                        .help("On conflict, keep the current names and notes")
+                    Button("Import (Overwrite Existing)…") { importNames(overwrite: true) }
+                        .help("On conflict, use the names and notes from the imported file")
                 }
                 if let message {
                     Text(message).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Section {
-                LabeledContent("MAC 厂商（IEEE）", value: "\(OUIDatabase.shared.count) 条")
-                LabeledContent("端口服务（IANA）", value: "TCP 端口库")
-                LabeledContent("Apple 型号（AppleDB）", value: "型号标识符映射")
-                Button(updating ? "正在更新…" : "在线更新厂商库") { updateOUI() }
+                LabeledContent("MAC vendors (IEEE)", value: String(localized: "\(OUIDatabase.shared.count) entries"))
+                LabeledContent("Port services (IANA)", value: String(localized: "TCP port list"))
+                LabeledContent("Apple models (AppleDB)", value: String(localized: "Model identifier map"))
+                Button(updating ? String(localized: "Updating…") : String(localized: "Update Vendor Database")) { updateOUI() }
                     .disabled(updating)
             } header: {
-                Text("内置数据库")
+                Text("Built-in Databases")
             } footer: {
-                Text("厂商数据来自 IEEE Registration Authority 公开注册表（MA-L / MA-M / MA-S / IAB / CID），更新后重启应用生效。")
+                Text("Vendor data comes from the public IEEE Registration Authority registries (MA-L / MA-M / MA-S / IAB / CID). Updates take effect after restarting the app.")
             }
             Section {
-                Button("清除所有设备历史…", role: .destructive) { confirmReset = true }
+                Button("Clear All Device History…", role: .destructive) { confirmReset = true }
             } footer: {
-                Text("设备库保存在 ~/Library/Application Support/LanDetector。")
+                Text("The device database is stored in ~/Library/Application Support/LanDetector.")
             }
         }
         .formStyle(.grouped)
-        .confirmationDialog("清除所有网络的设备历史、自定义名称和备注？", isPresented: $confirmReset) {
-            Button("清除", role: .destructive) {
+        .confirmationDialog("Clear device history, custom names and notes for all networks?", isPresented: $confirmReset) {
+            Button("Clear", role: .destructive) {
                 model.clearResults()
                 DeviceStore.deleteAll()
-                message = "已清除设备历史。"
+                message = String(localized: "Device history cleared.")
             }
         }
     }
@@ -265,7 +266,7 @@ private struct DataSettings: View {
     private func importNames(overwrite: Bool) {
         guard let records = Exporter.pickCustomNamesFile() else { return }
         let n = model.importCustomNames(records, overwrite: overwrite)
-        message = "已导入 \(n) 条记录。"
+        message = String(localized: "Records imported: \(n)")
     }
 
     private func updateOUI() {
@@ -273,9 +274,9 @@ private struct DataSettings: View {
         Task {
             do {
                 let count = try await OUIUpdater.update()
-                message = "厂商库已更新：\(count) 条记录，重启后生效。"
+                message = String(localized: "Vendor database updated: \(count) entries. Restart the app to use it.")
             } catch {
-                message = "更新失败：\(error.localizedDescription)"
+                message = String(localized: "Update failed: \(error.localizedDescription)")
             }
             updating = false
         }

@@ -27,16 +27,16 @@ struct ContentView: View {
                 .inspectorColumnWidth(min: 300, ideal: 340, max: 460)
                 .toolbar {
                     // Inspector toolbar items stay in the toolbar while it is hidden, hence the condition.
-                    // Trailing, where 显示检查器 sits while the inspector is closed.
+                    // Trailing, where Show Inspector sits while the inspector is closed.
                     if model.showInspector {
                         ToolbarSpacer(.flexible, placement: .primaryAction)
                         ToolbarItem(placement: .primaryAction) {
                             Button {
                                 model.showInspector = false
                             } label: {
-                                Label("隐藏检查器", systemImage: "sidebar.trailing")
+                                Label("Hide Inspector", systemImage: "sidebar.trailing")
                             }
-                            .help("隐藏检查器 (⌥⌘I)")
+                            .help("Hide the inspector (⌥⌘I)")
                         }
                     }
                 }
@@ -58,38 +58,40 @@ struct ListToolbar: ToolbarContent {
             Button {
                 model.isScanning ? model.stopScan() : model.startScan()
             } label: {
-                Label(model.isScanning ? "停止" : "扫描", systemImage: model.isScanning ? "stop.fill" : "play.fill")
+                Label(model.isScanning ? String(localized: "Stop") : String(localized: "Scan"),
+                      systemImage: model.isScanning ? "stop.fill" : "play.fill")
             }
-            .help(model.isScanning ? "停止扫描 (⌘R)" : "扫描网络 (⌘R)")
+            .help(model.isScanning ? String(localized: "Stop scanning (⌘R)") : String(localized: "Scan the network (⌘R)"))
 
             Button {
                 model.toggleLive()
             } label: {
-                Label("实时监控", systemImage: model.isLive ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right")
+                Label("Live Monitoring", systemImage: model.isLive ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right")
                     .symbolEffect(.variableColor.iterative, isActive: model.isLive)
             }
             .tint(model.isLive ? .green : nil)
-            .help(model.isLive ? "停止实时监控 (⇧⌘R)" : "持续监控网络变化 (⇧⌘R)")
+            .help(model.isLive ? String(localized: "Stop live monitoring (⇧⌘R)")
+                               : String(localized: "Monitor the network continuously for changes (⇧⌘R)"))
 
             Button {
                 model.showPortScanSheet = true
             } label: {
-                Label("端口扫描", systemImage: "network.badge.shield.half.filled")
+                Label("Port Scan", systemImage: "network.badge.shield.half.filled")
             }
-            .help("扫描开放端口 (⌥⌘P)")
+            .help("Scan for open ports (⌥⌘P)")
             .disabled(model.devices.isEmpty)
         }
         ToolbarItem(placement: .primaryAction) {
-            Picker("视图", selection: $model.viewMode) {
-                Label("列表", systemImage: "list.bullet").tag(ViewMode.table)
-                Label("卡片", systemImage: "square.grid.2x2").tag(ViewMode.grid)
+            Picker("View", selection: $model.viewMode) {
+                Label("List", systemImage: "list.bullet").tag(ViewMode.table)
+                Label("Cards", systemImage: "square.grid.2x2").tag(ViewMode.grid)
             }
             .pickerStyle(.segmented)
-            .help("切换列表 / 卡片视图 (⌘1 / ⌘2)")
+            .help("Switch between list and card views (⌘1 / ⌘2)")
         }
         // Filters this list; the placeholder names the list it searches.
         ToolbarItem(placement: .primaryAction) {
-            ToolbarSearchField(text: $model.searchText, prompt: "搜索" + model.listTitle)
+            ToolbarSearchField(text: $model.searchText, prompt: String(localized: "Search \(model.listTitle)"))
                 .frame(width: 190)
         }
         .sharedBackgroundVisibility(.hidden)
@@ -99,9 +101,9 @@ struct ListToolbar: ToolbarContent {
                 Button {
                     model.showInspector = true
                 } label: {
-                    Label("显示检查器", systemImage: "sidebar.trailing")
+                    Label("Show Inspector", systemImage: "sidebar.trailing")
                 }
-                .help("显示检查器 (⌥⌘I)")
+                .help("Show the inspector (⌥⌘I)")
             }
         }
     }
@@ -153,12 +155,12 @@ private struct ScanProgressBar: View {
         .allowsHitTesting(false)
         .transition(.opacity)
         .accessibilityElement()
-        .accessibilityLabel("扫描进度")
+        .accessibilityLabel("Scan progress")
         .accessibilityValue("\(Int(progress * 100))%")
     }
 }
 
-/// A range behind a router: says what cannot be seen from here, so "未知" does not read as a fault.
+/// A range behind a router: says what cannot be seen from here, so "Unknown" does not read as a fault.
 private struct RemoteRangeBanner: View {
     let subnet: String
     let hasHistory: Bool
@@ -168,15 +170,15 @@ private struct RemoteRangeBanner: View {
     }
 
     private var message: String {
-        let reason = "跨路由扫描 \(subnet)：隔着路由器拿不到 MAC 和 Bonjour 信息"
-        return hasHistory ? reason + "，厂商、型号沿用上次直连该网络时的记录，名称向路由器查询。"
-                          : reason + "，名称向路由器查询；直连该网络扫描一次即可识别厂商与类型。"
+        hasHistory
+            ? String(localized: "Scanning \(subnet) through a router, which hides MAC addresses and Bonjour. Vendors and models are from the last scan on this network; names come from the router.")
+            : String(localized: "Scanning \(subnet) through a router, which hides MAC addresses and Bonjour. Names come from the router; scan once while connected to this network to identify vendors and types.")
     }
 }
 
 private struct MACWarningBanner: View {
     var body: some View {
-        ListBanner(text: "读不到 MAC 地址：macOS 27 只向 Developer ID 签名的应用开放 ARP 表，厂商识别和设备合并会受影响。",
+        ListBanner(text: String(localized: "Can’t read MAC addresses: macOS 27 only opens the ARP table to apps signed with a Developer ID. Vendor detection and device merging are affected."),
                    symbol: "exclamationmark.triangle.fill", style: .orange, background: .orange.opacity(0.12))
     }
 }
@@ -207,31 +209,32 @@ struct DeviceListContent: View {
         let devices = model.visibleDevices
         Group {
             if model.interface == nil {
-                ContentUnavailableView("没有可用的网络", systemImage: "network.slash",
-                                       description: Text("请连接 Wi-Fi 或以太网后重试。"))
+                ContentUnavailableView("No Network Available", systemImage: "network.slash",
+                                       description: Text("Connect to Wi-Fi or Ethernet and try again."))
             } else if devices.isEmpty {
                 if !model.searchText.isEmpty {
                     ContentUnavailableView {
-                        Label("没有找到“\(model.searchText)”", systemImage: "magnifyingglass")
+                        Label("No Results for “\(model.searchText)”", systemImage: "magnifyingglass")
                     } description: {
-                        Text("在“\(model.listTitle)”中没有匹配的设备。")
+                        Text("No devices in “\(model.listTitle)” match your search.")
                     } actions: {
                         if model.sidebar != .all {
-                            Button("在全部设备中搜索") { model.sidebar = .all }
+                            Button("Search All Devices") { model.sidebar = .all }
                         }
                     }
                 } else if model.isScanning {
-                    ProgressView("正在发现设备…")
+                    ProgressView("Discovering devices…")
                         .controlSize(.large)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ContentUnavailableView {
-                        Label("暂无设备", systemImage: "dot.radiowaves.left.and.right")
+                        Label("No Devices", systemImage: "dot.radiowaves.left.and.right")
                     } description: {
-                        Text(model.devices.isEmpty ? "点击扫描以发现局域网中的设备。" : "“\(model.listTitle)”中没有设备。")
+                        Text(model.devices.isEmpty ? String(localized: "Click Scan to discover devices on your local network.")
+                                                   : String(localized: "There are no devices in “\(model.listTitle)”."))
                     } actions: {
                         if model.devices.isEmpty {
-                            Button("扫描网络") { model.startScan() }
+                            Button("Scan Network") { model.startScan() }
                                 .buttonStyle(.glassProminent)
                                 .controlSize(.large)
                         }
@@ -261,7 +264,7 @@ struct ToolbarSearchField: NSViewRepresentable {
 
     private static weak var current: NSSearchField?
 
-    /// Edit ▸ 查找设备 (⌘F).
+    /// Edit ▸ Find Device (⌘F).
     static func focus() {
         guard let field = current else { return }
         field.window?.makeFirstResponder(field)
@@ -277,7 +280,7 @@ struct ToolbarSearchField: NSViewRepresentable {
         field.sendsSearchStringImmediately = true
         field.target = context.coordinator
         field.action = #selector(Coordinator.search(_:))
-        field.setAccessibilityLabel("搜索设备")
+        field.setAccessibilityLabel(String(localized: "Search devices"))
         Self.current = field
         return field
     }

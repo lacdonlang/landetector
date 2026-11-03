@@ -453,3 +453,13 @@ import Testing
         #expect(DNSCodec.query([DNSQuestion("x.local", .ptr)])[2] == 0)
     }
 }
+
+@Suite struct LocalizationTests {
+    @Test func englishSourceWithChineseTranslation() throws {
+        #expect(DeviceKind.router.title == "Router")
+        #expect(PortDatabase.shared.service(for: 445)?.description == "SMB file sharing")
+        let zh = try #require(Bundle.module.path(forResource: "zh-Hans", ofType: "lproj").flatMap(Bundle.init(path:)))
+        #expect(zh.localizedString(forKey: "Router", value: nil, table: nil) == "路由器")
+        #expect(zh.localizedString(forKey: "%@ device", value: nil, table: nil) == "%@ 设备")
+    }
+}

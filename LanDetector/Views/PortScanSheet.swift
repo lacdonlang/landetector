@@ -27,25 +27,26 @@ struct PortScanSheet: View {
                     .frame(width: 44, height: 44)
                     .background(Color.accentColor.gradient, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("端口扫描").font(.title2.weight(.semibold))
+                    Text("Port Scan").font(.title2.weight(.semibold))
                     Text(targets.count == 1 ? "\(targets[0].displayName) · \(targets[0].ipv4?.description ?? "")"
-                                            : "\(targets.count) 台设备")
+                                            : String(localized: "\(targets.count) devices"))
                         .foregroundStyle(.secondary)
                 }
             }
 
             Form {
-                Picker("端口范围", selection: $presetRaw) {
+                Picker("Ports to scan", selection: $presetRaw) {
                     ForEach(PortPreset.allCases) { p in
                         Text(p.title).tag(p.rawValue)
                     }
                 }
                 .pickerStyle(.radioGroup)
                 if preset == .custom {
-                    TextField("端口", text: $customPorts, prompt: Text("例如 22,80,443,8000-8100"))
+                    TextField("Ports", text: $customPorts, prompt: Text("e.g. 22,80,443,8000-8100"))
                 }
-                LabeledContent("预计") {
-                    Text("\(portCount * targets.count) 个连接 · \(estimate(portCount * targets.count))")
+                LabeledContent("Estimate") {
+                    Text(verbatim: String(localized: "\(portCount * targets.count) connections") + " · "
+                         + estimate(portCount * targets.count))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -67,7 +68,7 @@ struct PortScanSheet: View {
                                 HStack(alignment: .firstTextBaseline) {
                                     Text(fresh.displayName).fontWeight(.medium)
                                     Spacer()
-                                    Text(fresh.openPorts.isEmpty ? "无开放端口"
+                                    Text(fresh.openPorts.isEmpty ? String(localized: "No open ports")
                                                                  : fresh.openPorts.map { PortDatabase.shared.label(for: $0) }.joined(separator: ", "))
                                         .font(.caption.monospaced())
                                         .foregroundStyle(.secondary)
@@ -83,11 +84,11 @@ struct PortScanSheet: View {
             HStack {
                 Spacer()
                 if model.portScanRunning {
-                    Button("停止") { model.cancelPortScan() }
+                    Button("Stop") { model.cancelPortScan() }
                 } else {
-                    Button("关闭") { dismiss() }
+                    Button("Close") { dismiss() }
                         .keyboardShortcut(.cancelAction)
-                    Button(started ? "重新扫描" : "开始扫描") {
+                    Button(started ? String(localized: "Scan Again") : String(localized: "Start Scan")) {
                         started = true
                         model.scanPorts(targets.map(\.id), preset: preset, custom: customPorts)
                     }
@@ -103,8 +104,8 @@ struct PortScanSheet: View {
 
     private func estimate(_ connections: Int) -> String {
         let seconds = Double(connections) / 640 * 0.5
-        if seconds < 2 { return "约 1 秒" }
-        if seconds < 90 { return "约 \(Int(seconds)) 秒" }
-        return "约 \(Int(seconds / 60)) 分钟"
+        if seconds < 2 { return String(localized: "about 1 second") }
+        if seconds < 90 { return String(localized: "about \(Int(seconds)) seconds") }
+        return String(localized: "about \(Int(seconds / 60)) minutes")
     }
 }

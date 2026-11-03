@@ -15,7 +15,7 @@ struct DeviceInspector: View {
             } else if model.interface != nil {
                 NetworkOverview()
             } else {
-                ContentUnavailableView("没有可用的网络", systemImage: "network.slash")
+                ContentUnavailableView("No Network Available", systemImage: "network.slash")
             }
         }
         // The column keeps its width whatever is selected: content that reported its natural width (long IPv6
@@ -41,51 +41,51 @@ private struct DeviceDetail: View {
                 actions
             }
 
-            Section("网络") {
+            Section("Network") {
                 InfoRow(label: "IPv4", value: device.ipv4?.description, monospaced: true)
-                InfoRow(label: "MAC", value: device.mac.map { $0.description + (device.hasPrivateMAC ? "（私有）" : "") },
+                InfoRow(label: "MAC", value: device.mac.map { device.hasPrivateMAC ? String(localized: "\($0.description) (private)") : $0.description },
                         monospaced: true)
-                InfoRow(label: "厂商", value: device.vendorFull)
-                ForEach(device.ipv6LinkLocal, id: \.self) { InfoRow(label: "IPv6 本地", value: $0.description, monospaced: true) }
-                ForEach(device.ipv6Routable, id: \.self) { InfoRow(label: "IPv6 全局", value: $0.description, monospaced: true) }
+                InfoRow(label: String(localized: "Vendor"), value: device.vendorFull)
+                ForEach(device.ipv6LinkLocal, id: \.self) { InfoRow(label: String(localized: "IPv6 link-local"), value: $0.description, monospaced: true) }
+                ForEach(device.ipv6Routable, id: \.self) { InfoRow(label: String(localized: "IPv6 global"), value: $0.description, monospaced: true) }
             }
 
             if device.dnsName != nil || device.mdnsName != nil || device.netbiosName != nil || device.upnp?.friendlyName != nil {
-                Section("名称") {
+                Section("Names") {
                     InfoRow(label: "DNS", value: device.dnsName)
                     InfoRow(label: "mDNS", value: device.mdnsName)
-                    InfoRow(label: "SMB 名称", value: device.netbiosName)
-                    InfoRow(label: "SMB 工作组", value: device.netbiosGroup)
-                    InfoRow(label: "UPnP 名称", value: device.upnp?.friendlyName)
+                    InfoRow(label: String(localized: "SMB name"), value: device.netbiosName)
+                    InfoRow(label: String(localized: "SMB workgroup"), value: device.netbiosGroup)
+                    InfoRow(label: String(localized: "UPnP name"), value: device.upnp?.friendlyName)
                 }
             }
 
-            Section("识别") {
-                Picker("类型", selection: Binding(
+            Section("Identification") {
+                Picker("Type", selection: Binding(
                     get: { device.customKind },
                     set: { kind in model.edit(device.id) { $0.customKind = kind } }
                 )) {
-                    Label("自动（\(device.kind.title)）", systemImage: "wand.and.stars").tag(DeviceKind?.none)
+                    Label("Automatic (\(device.kind.title))", systemImage: "wand.and.stars").tag(DeviceKind?.none)
                     Divider()
                     ForEach(DeviceKind.allCases) { kind in
                         Label(kind.title, systemImage: kind.symbol).tag(DeviceKind?.some(kind))
                     }
                 }
-                InfoRow(label: "型号", value: device.model)
+                InfoRow(label: String(localized: "Model"), value: device.model)
                 if device.manufacturer != device.vendor {
-                    InfoRow(label: "制造商", value: device.manufacturer)
+                    InfoRow(label: String(localized: "Manufacturer"), value: device.manufacturer)
                 }
-                InfoRow(label: "系统", value: device.osName)
+                InfoRow(label: String(localized: "OS"), value: device.osName)
                 if let upnp = device.upnp {
-                    InfoRow(label: "UPnP 设备", value: [upnp.manufacturer, upnp.modelName, upnp.modelNumber]
+                    InfoRow(label: String(localized: "UPnP device"), value: [upnp.manufacturer, upnp.modelName, upnp.modelNumber]
                         .compactMap { $0 }.joined(separator: " ").nilIfEmpty)
-                    InfoRow(label: "UPnP 类型", value: upnp.shortDeviceType)
-                    InfoRow(label: "服务器", value: upnp.server)
+                    InfoRow(label: String(localized: "UPnP type"), value: upnp.shortDeviceType)
+                    InfoRow(label: String(localized: "Server"), value: upnp.server)
                 }
             }
 
             if !device.services.isEmpty {
-                Section("Bonjour 服务（\(device.services.count)）") {
+                Section("Bonjour Services (\(device.services.count))") {
                     // Recognised service types first; private ones such as `_asquic._udp` go last.
                     ForEach(device.services.sorted { ($0.isKnownType ? 0 : 1, $0.typeDescription) < ($1.isKnownType ? 0 : 1, $1.typeDescription) }) { service in
                         ServiceRow(service: service)
@@ -95,7 +95,7 @@ private struct DeviceDetail: View {
 
             Section {
                 if device.openPorts.isEmpty {
-                    Text(device.portsScannedAt == nil ? "尚未扫描端口" : "未发现开放端口")
+                    Text(device.portsScannedAt == nil ? String(localized: "Ports not scanned yet") : String(localized: "No open ports found"))
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(device.openPorts, id: \.self) { port in
@@ -104,13 +104,13 @@ private struct DeviceDetail: View {
                 }
             } header: {
                 HStack {
-                    Text("开放端口")
+                    Text("Open Ports")
                     Spacer()
                     if model.portScanRunning {
                         ProgressView(value: model.portScanProgress)
                             .frame(width: 60)
                     } else {
-                        Button("扫描") {
+                        Button("Scan") {
                             model.selection = [device.id]
                             model.showPortScanSheet = true
                         }
@@ -120,7 +120,7 @@ private struct DeviceDetail: View {
                 }
             } footer: {
                 if let date = device.portsScannedAt {
-                    Text("扫描于 \(date.formatted(date: .abbreviated, time: .shortened))")
+                    Text("Scanned \(date.formatted(date: .abbreviated, time: .shortened))")
                 }
             }
 
@@ -129,19 +129,19 @@ private struct DeviceDetail: View {
                     LatencyChart(values: device.latencyHistory)
                         .frame(height: 90)
                     let values = device.latencyHistory
-                    LabeledContent("平均 / 最小 / 最大") {
+                    LabeledContent("Avg / Min / Max") {
                         Text(String(format: "%.1f / %.1f / %.1f ms", values.reduce(0, +) / Double(values.count),
                                     values.min() ?? 0, values.max() ?? 0))
                             .monospacedDigit()
                     }
                 } else {
-                    LabeledContent("当前延迟") { LatencyText(latency: device.isOnline ? device.latency : nil) }
+                    LabeledContent("Current latency") { LatencyText(latency: device.isOnline ? device.latency : nil) }
                 }
             } header: {
                 HStack {
-                    Text("延迟")
+                    Text("Latency")
                     Spacer()
-                    Button(model.pingingID == device.id ? "停止 Ping" : "持续 Ping") {
+                    Button(model.pingingID == device.id ? String(localized: "Stop Ping") : String(localized: "Ping Continuously")) {
                         model.togglePing(device.id)
                     }
                     .buttonStyle(.borderless)
@@ -150,10 +150,10 @@ private struct DeviceDetail: View {
             }
 
             Section {
-                LabeledContent("首次发现", value: device.firstSeen.formatted(date: .abbreviated, time: .shortened))
-                LabeledContent("最后在线", value: device.isOnline ? "现在" : device.lastSeen.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("First seen", value: device.firstSeen.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("Last seen", value: device.isOnline ? String(localized: "Now") : device.lastSeen.formatted(date: .abbreviated, time: .shortened))
                 if device.presence.isEmpty {
-                    Text("完成一次扫描后开始记录在线时间线。")
+                    Text("The presence timeline starts after a scan completes.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -161,10 +161,10 @@ private struct DeviceDetail: View {
                 }
             } header: {
                 HStack {
-                    Text("历史")
+                    Text("History")
                     Spacer()
                     if !device.presence.isEmpty {
-                        Picker("时间范围", selection: $presenceWindow) {
+                        Picker("Time range", selection: $presenceWindow) {
                             ForEach(PresenceWindow.allCases) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -176,11 +176,11 @@ private struct DeviceDetail: View {
             }
 
             Section {
-                TextField("网址", text: $customURL, prompt: Text(verbatim: device.ipv4.map { "http://\($0)" } ?? "http://"))
+                TextField("URL", text: $customURL, prompt: Text(verbatim: device.ipv4.map { "http://\($0)" } ?? "http://"))
                     .onSubmit { model.edit(device.id) { $0.customURL = customURL.nilIfEmpty } }
                 ZStack(alignment: .topLeading) {
                     if notes.isEmpty {
-                        Text("添加备注…")
+                        Text("Add notes…")
                             .foregroundStyle(.tertiary)
                             .padding(.leading, 5)
                             .allowsHitTesting(false)
@@ -191,9 +191,9 @@ private struct DeviceDetail: View {
                         .scrollContentBackground(.hidden)
                 }
             } header: {
-                Text("备注")
+                Text("Notes")
             } footer: {
-                Text("网址用于“在浏览器中打开”，留空时自动选择设备的网页端口。")
+                Text("The URL is used by “Open in Browser”. Leave it empty to pick the device’s web port automatically.")
             }
         }
         .formStyle(.grouped)
@@ -232,14 +232,14 @@ private struct DeviceDetail: View {
             DeviceIcon(kind: device.effectiveKind, size: 52, isOnline: device.isOnline)
             VStack(alignment: .leading, spacing: 4) {
                 if isRenaming {
-                    TextField("名称", text: $name, prompt: Text(device.displayName))
+                    TextField("Name", text: $name, prompt: Text(device.displayName))
                         .labelsHidden()
                         .textFieldStyle(.roundedBorder)
                         .font(.title3.weight(.semibold))
                         .focused($nameFocused)
                         .onSubmit(commitRename)
                         .onExitCommand { isRenaming = false }
-                    Text("留空恢复自动识别的名称 · Esc 取消")
+                    Text("Leave empty to restore the detected name · Esc to cancel")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -254,7 +254,7 @@ private struct DeviceDetail: View {
                         }
                         .buttonStyle(.borderless)
                         .foregroundStyle(.secondary)
-                        .help("重命名（也可在列表中按 Return）")
+                        .help("Rename (or press Return in the list)")
                     }
                     Text([device.model, device.vendor].compactMap { $0 }.uniqued().joined(separator: " · ").nilIfEmpty
                          ?? device.effectiveKind.title)
@@ -264,14 +264,16 @@ private struct DeviceDetail: View {
                 }
                 HStack(spacing: 6) {
                     if device.isOnline {
-                        Chip(text: device.latency.map { "在线 · \(latencyString($0))" } ?? "在线", color: .green,
-                             systemImage: "circle.fill")
+                        Chip(text: device.latency.map { String(localized: "Online · \(latencyString($0))") } ?? String(localized: "Online"),
+                             color: .green, systemImage: "circle.fill")
                     } else {
-                        Chip(text: "离线 · \(device.lastSeen.relativeText)", color: .secondary, systemImage: "moon.zzz.fill")
+                        Chip(text: String(localized: "Offline · \(device.lastSeen.relativeText)"), color: .secondary, systemImage: "moon.zzz.fill")
                     }
-                    if device.isCurrentDevice { Chip(text: "本机", color: .blue) }
-                    if device.isGateway && device.displayName != "网关" { Chip(text: "网关", color: .indigo) }
-                    if device.hasPrivateMAC { Chip(text: "私有地址", color: .purple, systemImage: "eye.slash") }
+                    if device.isCurrentDevice { Chip(text: String(localized: "This Mac"), color: .blue) }
+                    if device.isGateway && device.displayName != Device.gatewayFallbackName {
+                        Chip(text: String(localized: "Gateway"), color: .indigo)
+                    }
+                    if device.hasPrivateMAC { Chip(text: String(localized: "Private address"), color: .purple, systemImage: "eye.slash") }
                 }
             }
             Spacer(minLength: 0)
@@ -284,7 +286,8 @@ private struct DeviceDetail: View {
                         .foregroundStyle(device.isWatched ? Color.orange : Color.secondary)
                 }
                 .buttonStyle(.borderless)
-                .help(device.isWatched ? "关闭上下线提醒" : "开启上下线提醒：扫描发现它上线或离线时通知你")
+                .help(device.isWatched ? String(localized: "Turn off online/offline alerts")
+                      : String(localized: "Turn on online/offline alerts: get notified when a scan sees this device come online or go offline"))
                 Button {
                     model.toggleFavorite([device.id])
                 } label: {
@@ -293,7 +296,7 @@ private struct DeviceDetail: View {
                         .foregroundStyle(device.isFavorite ? .yellow : .secondary)
                 }
                 .buttonStyle(.borderless)
-                .help(device.isFavorite ? "取消收藏" : "收藏")
+                .help(device.isFavorite ? String(localized: "Remove from Favorites") : String(localized: "Add to Favorites"))
             }
         }
         .padding(.vertical, 4)
@@ -316,7 +319,7 @@ private struct DeviceDetail: View {
     private var actions: some View {
         GlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
-                ActionButton(title: "网页", symbol: "safari", detected: DeviceActions.hasWeb(device)) {
+                ActionButton(title: String(localized: "Web"), symbol: "safari", detected: DeviceActions.hasWeb(device)) {
                     DeviceActions.openWeb(device)
                 }
                 .disabled(device.ipv4 == nil)
@@ -324,15 +327,15 @@ private struct DeviceDetail: View {
                     DeviceActions.openSSH(device)
                 }
                 .disabled(device.ipv4 == nil)
-                ActionButton(title: "共享", symbol: "folder", detected: DeviceActions.hasSMB(device)) {
+                ActionButton(title: String(localized: "Files"), symbol: "folder", detected: DeviceActions.hasSMB(device)) {
                     DeviceActions.openSMB(device)
                 }
                 .disabled(device.ipv4 == nil)
-                ActionButton(title: "屏幕", symbol: "display", detected: DeviceActions.hasVNC(device)) {
+                ActionButton(title: String(localized: "Screen"), symbol: "display", detected: DeviceActions.hasVNC(device)) {
                     DeviceActions.openVNC(device)
                 }
                 .disabled(device.ipv4 == nil)
-                ActionButton(title: "唤醒", symbol: "power") {
+                ActionButton(title: String(localized: "Wake"), symbol: "power") {
                     DeviceActions.wake(device, broadcast: model.interface?.broadcast)
                 }
                 .disabled(device.mac == nil)
@@ -362,7 +365,7 @@ private struct ActionButton: View {
             }
         }
         .buttonStyle(.glass)
-        .help(detected ? "\(title)（已检测到服务）" : title)
+        .help(detected ? String(localized: "\(title) (service detected)") : title)
     }
 }
 
@@ -373,7 +376,7 @@ private struct ServiceRow: View {
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             if service.txt.isEmpty {
-                Text("无 TXT 记录").foregroundStyle(.secondary).font(.caption)
+                Text("No TXT records").foregroundStyle(.secondary).font(.caption)
             } else {
                 ForEach(service.txt.keys.sorted(), id: \.self) { key in
                     LabeledContent(key) {
@@ -422,9 +425,9 @@ private struct PortRow: View {
                 .frame(width: 54, alignment: .leading)
             // One line for the service (its description already names it), a second only for a banner.
             VStack(alignment: .leading, spacing: 2) {
-                Text(service.map { $0.description.isEmpty ? $0.name : $0.description } ?? "未知服务")
+                Text(service.map { $0.description.isEmpty ? $0.name : $0.description } ?? String(localized: "Unknown service"))
                     .lineLimit(1)
-                    .help(service.map { "\($0.name)：\($0.description)" } ?? "")
+                    .help(service.map { String(localized: "\($0.name): \($0.description)") } ?? "")
                 if let banner = device.banners[port] {
                     Text(banner)
                         .font(.caption.monospaced())
@@ -441,7 +444,7 @@ private struct PortRow: View {
                     Image(systemName: "arrow.up.right.square")
                 }
                 .buttonStyle(.borderless)
-                .help("打开 \(url.absoluteString)")
+                .help("Open \(url.absoluteString)")
             }
         }
     }
@@ -475,27 +478,28 @@ private struct MultiSelectionSummary: View {
                         DeviceIcon(kind: d.effectiveKind, size: 40)
                     }
                 }
-                Text("已选择 \(devices.count) 台设备")
+                Text("\(devices.count) devices selected")
                     .font(.title3.weight(.semibold))
-                Text("\(devices.filter(\.isOnline).count) 台在线")
+                Text("\(devices.filter(\.isOnline).count) online")
                     .foregroundStyle(.secondary)
             }
-            Section("批量操作") {
-                Button("扫描端口…", systemImage: "network.badge.shield.half.filled") { model.showPortScanSheet = true }
-                Button("收藏 / 取消收藏", systemImage: "star") { model.toggleFavorite(Set(devices.map(\.id))) }
-                Button(devices.allSatisfy(\.isWatched) ? "关闭上下线提醒" : "开启上下线提醒", systemImage: "bell") {
+            Section("Actions") {
+                Button("Scan Ports…", systemImage: "network.badge.shield.half.filled") { model.showPortScanSheet = true }
+                Button("Add to / Remove from Favorites", systemImage: "star") { model.toggleFavorite(Set(devices.map(\.id))) }
+                Button(devices.allSatisfy(\.isWatched) ? String(localized: "Turn Off Online/Offline Alerts")
+                                                       : String(localized: "Turn On Online/Offline Alerts"), systemImage: "bell") {
                     model.toggleWatch(Set(devices.map(\.id)))
                 }
-                Button("网络唤醒", systemImage: "power") {
+                Button("Wake on LAN", systemImage: "power") {
                     for d in devices { DeviceActions.wake(d, broadcast: model.interface?.broadcast) }
                 }
-                Menu("导出所选") {
+                Menu("Export Selected") {
                     ForEach(Exporter.Format.allCases) { format in
                         Button(format.title) { Exporter.export(devices, as: format) }
                     }
                 }
             }
-            Section("设备") {
+            Section("Devices") {
                 ForEach(devices) { d in
                     LabeledContent(d.displayName, value: d.ipv4?.description ?? "—")
                 }

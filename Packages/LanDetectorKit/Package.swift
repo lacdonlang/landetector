@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "LanDetectorKit",
+    defaultLocalization: "en",
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "LanDetectorKit", targets: ["LanDetectorKit"]),
@@ -11,7 +12,7 @@ let package = Package(
     targets: [
         .target(
             name: "LanDetectorKit",
-            resources: [.copy("Resources")]
+            resources: [.copy("Resources"), .process("Localizable.xcstrings")]
         ),
         .executableTarget(
             name: "landetector-cli",

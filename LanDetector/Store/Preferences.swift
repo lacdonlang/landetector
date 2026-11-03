@@ -108,7 +108,7 @@ enum Prefs {
         d.removeObject(forKey: legacyRange)
         d.removeObject(forKey: legacyRangeEnabled)
         guard !text.isEmpty else { return }
-        let preset = RangePreset(name: "自定义范围", range: text)
+        let preset = RangePreset(name: String(localized: "Custom Range"), range: text)
         storedRangePresets.append(preset)
         if enabled, preset.ipv4Range != nil { selectedRangePresetID = preset.id }
     }

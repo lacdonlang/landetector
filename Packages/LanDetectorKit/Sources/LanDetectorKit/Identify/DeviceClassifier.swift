@@ -140,7 +140,7 @@ public enum DeviceClassifier {
             classifyText(text, weight: 2.5, vote: vote)
             for (keyword, kind, os, weight) in bannerHints where text.contains(keyword) {
                 if let kind { vote(kind, weight) }
-                if let os, result.osName == nil { result.osName = os }
+                if let os, result.osName == nil { result.osName = localized(os) }
             }
         }
 
@@ -300,7 +300,7 @@ public enum DeviceClassifier {
         ("fritz!box", .router, "FRITZ!OS", 6), ("pfsense", .router, "pfSense", 6), ("opnsense", .router, "OPNsense", 6),
         // Generic hints last: the first matching OS wins.
         ("ubuntu", nil, "Ubuntu Linux", 0), ("debian", nil, "Debian Linux", 0), ("freebsd", nil, "FreeBSD", 0),
-        ("dropbear", nil, "Linux（嵌入式）", 0),
+        ("dropbear", nil, "Linux (embedded)", 0),
     ]
 
     static let portHints: [(UInt16, DeviceKind, Double)] = [

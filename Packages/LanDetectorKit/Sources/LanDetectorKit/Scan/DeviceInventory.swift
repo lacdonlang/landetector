@@ -16,15 +16,19 @@ public struct ScanContext: Sendable, Hashable {
 }
 
 public enum ScanPhase: String, Sendable {
-    case discovery = "发现设备"
-    case enrichment = "识别设备"
-    case finishing = "完成"
+    case discovery, enrichment, finishing
 }
 
 public struct ScanSummary: Sendable, Hashable {
     public var duration: TimeInterval
     public var hostsProbed: Int
     public var neighborSource: ARPTable.Source
+
+    public init(duration: TimeInterval, hostsProbed: Int, neighborSource: ARPTable.Source) {
+        self.duration = duration
+        self.hostsProbed = hostsProbed
+        self.neighborSource = neighborSource
+    }
 }
 
 public enum ScanEvent: Sendable {

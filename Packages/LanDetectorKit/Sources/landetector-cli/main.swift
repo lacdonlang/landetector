@@ -55,7 +55,7 @@ case "scan":
     }
     let devices = inventory.allDevices.filter(\.isOnline).sorted { $0.sortableIP < $1.sortableIP }
     print("\(devices.count) devices online\n")
-    print(pad("IP", 16), pad("MAC", 18), pad("名称", 28), pad("类型", 8), pad("型号/厂商", 34), "延迟")
+    print(pad("IP", 16), pad("MAC", 18), pad("Name", 28), pad("Kind", 14), pad("Model / vendor", 34), "Latency")
     for d in devices {
         print(pad(d.ipv4?.description ?? "-", 16), pad(d.mac?.description ?? "-", 18), pad(d.displayName, 28),
               pad(d.effectiveKind.title, 8), pad(d.subtitle, 34), d.latency.map { String(format: "%.1fms", $0) } ?? "-")

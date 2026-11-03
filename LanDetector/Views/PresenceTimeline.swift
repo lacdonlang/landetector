@@ -10,9 +10,18 @@ enum PresenceWindow: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .day: "24 小时"
-        case .week: "7 天"
-        case .month: "30 天"
+        case .day: String(localized: "24 Hours")
+        case .week: String(localized: "7 Days")
+        case .month: String(localized: "30 Days")
+        }
+    }
+
+    /// Caption under the start of the strip.
+    var startCaption: String {
+        switch self {
+        case .day: String(localized: "24 hours ago")
+        case .week: String(localized: "7 days ago")
+        case .month: String(localized: "30 days ago")
         }
     }
 
@@ -74,7 +83,7 @@ struct PresenceTimeline: View {
     var body: some View {
         let slots = PresenceSlot.slots(samples, window: window, now: Date())
         let observed = slots.compactMap(\.fraction)
-        LabeledContent("在线率") {
+        LabeledContent("Uptime") {
             if observed.isEmpty {
                 Text("—").foregroundStyle(.tertiary)
             } else {
@@ -82,13 +91,13 @@ struct PresenceTimeline: View {
                     .monospacedDigit()
             }
         }
-        .help("有扫描记录的时间段中，设备在线的比例")
+        .help("Share of scanned time slots in which the device was online")
         VStack(alignment: .leading, spacing: 4) {
             Chart(slots) { slot in
                 // Slots without a scan shrink to a stub so they never read as "offline".
                 let half = slot.fraction == nil ? 0.15 : 0.5
-                RectangleMark(xStart: .value("开始", slot.start.addingTimeInterval(window.slot * 0.12)),
-                              xEnd: .value("结束", slot.end.addingTimeInterval(-window.slot * 0.12)),
+                RectangleMark(xStart: .value("Start", slot.start.addingTimeInterval(window.slot * 0.12)),
+                              xEnd: .value("End", slot.end.addingTimeInterval(-window.slot * 0.12)),
                               yStart: .value("", 0.5 - half), yEnd: .value("", 0.5 + half))
                     .foregroundStyle(color(slot).opacity(hovered == nil || hovered?.id == slot.id ? 1 : 0.55))
                     .cornerRadius(1.5)
@@ -112,9 +121,9 @@ struct PresenceTimeline: View {
             }
             .frame(height: 16)
             HStack {
-                Text(hovered.map(describe) ?? "\(window.title)前")
+                Text(hovered.map(describe) ?? window.startCaption)
                 Spacer()
-                if hovered == nil { Text("现在") }
+                if hovered == nil { Text("Now") }
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -132,10 +141,10 @@ struct PresenceTimeline: View {
             ? slot.start.formatted(date: .omitted, time: .shortened)
             : slot.start.formatted(.dateTime.month().day().hour().minute())
         let state = switch slot.fraction {
-        case nil: "没有扫描"
-        case 1?: "在线"
-        case 0?: "离线"
-        default: "部分时间在线"
+        case nil: String(localized: "Not scanned")
+        case 1?: String(localized: "Online")
+        case 0?: String(localized: "Offline")
+        default: String(localized: "Partly online")
         }
         return "\(start)–\(slot.end.formatted(date: .omitted, time: .shortened)) · \(state)"
     }

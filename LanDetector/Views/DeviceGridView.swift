@@ -76,7 +76,7 @@ struct DeviceCard: View {
                     LatencyText(latency: device.latency)
                         .font(.callout)
                 } else {
-                    Text("离线 · \(device.lastSeen.relativeText)")
+                    Text("Offline · \(device.lastSeen.relativeText)")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -102,9 +102,11 @@ struct DeviceCard: View {
     /// Always the same slot, so badges never shift the text.
     private var badges: some View {
         HStack(spacing: 4) {
-            if device.isCurrentDevice { Chip(text: "本机", color: .blue) }
-            if device.isGateway && device.displayName != "网关" { Chip(text: "网关", color: .indigo) }
-            if model.isRecent(device) { Chip(text: "新", color: .orange) }
+            if device.isCurrentDevice { Chip(text: String(localized: "This Mac"), color: .blue) }
+            if device.isGateway && device.displayName != Device.gatewayFallbackName {
+                Chip(text: String(localized: "Gateway"), color: .indigo)
+            }
+            if model.isRecent(device) { Chip(text: String(localized: "New"), color: .orange) }
             if device.isFavorite {
                 Image(systemName: "star.fill").foregroundStyle(.yellow).imageScale(.small)
             }

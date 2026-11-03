@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>zh-Hans</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>LanDetector</string>
 	<key>CFBundleExecutable</key>
@@ -75,7 +75,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 LanDetector</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>LanDetector 需要访问本地网络，以发现、识别并监控局域网中的设备。</string>
+	<string>LanDetector needs local network access to discover, identify and monitor the devices on your network.</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

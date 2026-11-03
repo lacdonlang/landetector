@@ -90,7 +90,8 @@ public enum BannerGrabber {
     static func brandHint(_ html: String) -> String? {
         let lower = html.lowercased()
         let found = brands.filter { lower.contains($0.lowercased()) }
-        return found.isEmpty ? nil : "页面含 " + found.prefix(3).joined(separator: " / ")
+        guard !found.isEmpty else { return nil }
+        return String(localized: "Page mentions \(found.prefix(3).joined(separator: " / "))", bundle: .module)
     }
 
     static func extractTitle(_ html: String) -> String? {

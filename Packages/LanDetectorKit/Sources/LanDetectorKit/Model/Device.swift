@@ -6,28 +6,30 @@ public enum DeviceKind: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var id: String { rawValue }
 
+    /// Localized name, e.g. "Router".
     public var title: String {
-        switch self {
-        case .router: "路由器"
-        case .networkDevice: "网络设备"
-        case .computer: "台式电脑"
-        case .laptop: "笔记本"
-        case .server: "服务器"
-        case .nas: "NAS 存储"
-        case .phone: "手机"
-        case .tablet: "平板"
-        case .watch: "手表"
-        case .tv: "电视"
-        case .mediaPlayer: "流媒体"
-        case .speaker: "音箱"
-        case .printer: "打印机"
-        case .camera: "摄像头"
-        case .gameConsole: "游戏机"
-        case .smartHome: "智能家居"
-        case .iot: "IoT 设备"
-        case .virtualMachine: "虚拟机"
-        case .unknown: "未知"
+        let english = switch self {
+        case .router: "Router"
+        case .networkDevice: "Network Device"
+        case .computer: "Desktop"
+        case .laptop: "Laptop"
+        case .server: "Server"
+        case .nas: "NAS"
+        case .phone: "Phone"
+        case .tablet: "Tablet"
+        case .watch: "Watch"
+        case .tv: "TV"
+        case .mediaPlayer: "Media Player"
+        case .speaker: "Speaker"
+        case .printer: "Printer"
+        case .camera: "Camera"
+        case .gameConsole: "Game Console"
+        case .smartHome: "Smart Home"
+        case .iot: "IoT Device"
+        case .virtualMachine: "Virtual Machine"
+        case .unknown: "Unknown"
         }
+        return localized(english)
     }
 
     /// SF Symbol name.
@@ -151,16 +153,19 @@ public struct Device: Identifiable, Codable, Sendable, Hashable {
         if let name = netbiosName?.nilIfBlank { return name }
         if let name = dnsName.map(Self.shortDNS)?.nilIfBlank { return name }
         if let model { return model }
-        if isGateway { return "网关" }
-        if let vendor { return "\(vendor) 设备" }
-        return ipv4?.description ?? ipv6.first?.description ?? "未知设备"
+        if isGateway { return Self.gatewayFallbackName }
+        if let vendor { return String(localized: "\(vendor) device", bundle: .module) }
+        return ipv4?.description ?? ipv6.first?.description ?? localized("Unknown device")
     }
+
+    /// What `displayName` falls back to for the gateway.
+    public static var gatewayFallbackName: String { localized("Gateway") }
 
     /// Secondary line: model or vendor.
     public var subtitle: String {
         if let model, displayName != model { return model }
         if let vendor { return vendor }
-        if hasPrivateMAC { return "私有 MAC 地址" }
+        if hasPrivateMAC { return localized("Private MAC address") }
         return effectiveKind.title
     }
 

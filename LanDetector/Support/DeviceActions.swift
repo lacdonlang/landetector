@@ -76,6 +76,11 @@ enum DeviceActions {
 
 /// Local notifications for newly discovered devices.
 enum Notifier {
+    /// Joins device names in a notification body.
+    private static var nameSeparator: String {
+        String(localized: ", ", comment: "Separator between device names in a notification")
+    }
+
     static func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
@@ -83,11 +88,11 @@ enum Notifier {
     static func notifyNewDevices(_ devices: [Device]) {
         let content = UNMutableNotificationContent()
         if devices.count == 1, let d = devices.first {
-            content.title = "发现新设备"
+            content.title = String(localized: "New device found")
             content.body = [d.displayName, d.ipv4?.description, d.vendor].compactMap { $0 }.joined(separator: " · ")
         } else {
-            content.title = "发现 \(devices.count) 台新设备"
-            content.body = devices.prefix(4).map(\.displayName).joined(separator: "、")
+            content.title = String(localized: "\(devices.count) new devices found")
+            content.body = devices.prefix(4).map(\.displayName).joined(separator: nameSeparator)
         }
         content.sound = .default
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
@@ -98,14 +103,16 @@ enum Notifier {
     static func notifyPresenceChanges(_ devices: [Device]) {
         let content = UNMutableNotificationContent()
         if devices.count == 1, let d = devices.first {
-            content.title = d.isOnline ? "\(d.displayName) 已上线" : "\(d.displayName) 已离线"
+            content.title = d.isOnline
+                ? String(localized: "\(d.displayName) came online")
+                : String(localized: "\(d.displayName) went offline")
             content.body = [d.ipv4?.description, d.model ?? d.vendor].compactMap { $0 }.joined(separator: " · ")
         } else {
-            let online = devices.filter(\.isOnline).map(\.displayName)
-            let offline = devices.filter { !$0.isOnline }.map(\.displayName)
-            content.title = "\(devices.count) 台设备状态变化"
-            content.body = [online.isEmpty ? nil : "上线：" + online.joined(separator: "、"),
-                            offline.isEmpty ? nil : "离线：" + offline.joined(separator: "、")]
+            let online = devices.filter(\.isOnline).map(\.displayName).joined(separator: nameSeparator)
+            let offline = devices.filter { !$0.isOnline }.map(\.displayName).joined(separator: nameSeparator)
+            content.title = String(localized: "\(devices.count) devices changed status")
+            content.body = [online.isEmpty ? nil : String(localized: "Online: \(online)"),
+                            offline.isEmpty ? nil : String(localized: "Offline: \(offline)")]
                 .compactMap { $0 }.joined(separator: "\n")
         }
         content.sound = .default
@@ -124,12 +131,12 @@ enum Exporter {
 
         var title: String {
             switch self {
-            case .csv: "CSV（逗号分隔）"
-            case .csvSemicolon: "CSV（分号分隔）"
-            case .tsv: "TSV（制表符分隔）"
-            case .psv: "PSV（竖线分隔）"
+            case .csv: String(localized: "CSV (Comma-Separated)")
+            case .csvSemicolon: String(localized: "CSV (Semicolon-Separated)")
+            case .tsv: String(localized: "TSV (Tab-Separated)")
+            case .psv: String(localized: "PSV (Pipe-Separated)")
             case .json: "JSON"
-            case .markdown: "Markdown 表格"
+            case .markdown: String(localized: "Markdown Table")
             }
         }
 
@@ -154,12 +161,20 @@ enum Exporter {
         }
     }
 
-    static let headers = ["名称", "状态", "IPv4", "MAC", "厂商", "类型", "型号", "系统", "DNS 名称", "mDNS 名称", "SMB 名称",
-                          "SMB 工作组", "IPv6 本地", "IPv6 全局", "开放端口", "延迟(ms)", "首次发现", "最后在线", "备注"]
+    /// Human-readable column titles of the CSV / TSV / PSV header row and the Markdown table, in the app's language.
+    /// JSON is encoded from `Device` itself, so its keys stay stable.
+    static let headers = [
+        String(localized: "Name"), String(localized: "Status"), "IPv4", "MAC", String(localized: "Vendor"),
+        String(localized: "Type"), String(localized: "Model"), String(localized: "OS"), String(localized: "DNS Name"),
+        String(localized: "mDNS Name"), String(localized: "SMB Name"), String(localized: "SMB Workgroup"),
+        String(localized: "IPv6 Link-Local"), String(localized: "IPv6 Global"), String(localized: "Open Ports"),
+        String(localized: "Latency (ms)"), String(localized: "First Seen"), String(localized: "Last Seen"),
+        String(localized: "Notes"),
+    ]
 
     static func row(_ d: Device) -> [String] {
         let df = ISO8601DateFormatter()
-        return [d.displayName, d.isOnline ? "在线" : "离线", d.ipv4?.description ?? "", d.mac?.description ?? "",
+        return [d.displayName, d.isOnline ? String(localized: "Online") : String(localized: "Offline"), d.ipv4?.description ?? "", d.mac?.description ?? "",
                 d.vendorFull ?? "", d.effectiveKind.title, d.model ?? "", d.osName ?? "", d.dnsName ?? "", d.mdnsName ?? "",
                 d.netbiosName ?? "", d.netbiosGroup ?? "", d.ipv6LinkLocal.map(\.description).joined(separator: " "),
                 d.ipv6Routable.map(\.description).joined(separator: " "), d.openPortsText,
@@ -203,7 +218,7 @@ enum Exporter {
         panel.allowedContentTypes = [UTType(filenameExtension: format.fileExtension) ?? .plainText]
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        // A BOM lets Excel open Chinese CSV correctly.
+        // A BOM lets Excel open non-ASCII CSV (e.g. Chinese names) correctly.
         let text = render(devices, as: format)
         let data = (format == .csv || format == .csvSemicolon ? "\u{FEFF}" : "") + text
         try? data.write(to: url, atomically: true, encoding: .utf8)
@@ -211,7 +226,7 @@ enum Exporter {
 
     static func exportCustomNames(_ records: [CustomNameRecord]) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "LanDetector-自定义名称.json"
+        panel.nameFieldStringValue = String(localized: "LanDetector Custom Names.json")
         panel.allowedContentTypes = [.json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let encoder = JSONEncoder()

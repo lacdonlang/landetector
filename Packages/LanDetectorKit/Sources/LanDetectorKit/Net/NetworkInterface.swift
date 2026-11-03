@@ -21,6 +21,19 @@ public struct NetworkInterface: Identifiable, Hashable, Sendable {
     public var gateway: IPv4Address?
     public var ipv6: [IPv6Address]
 
+    public init(name: String, index: UInt32, displayName: String, kind: Kind, mac: MACAddress?, ipv4: IPv4Address,
+                netmask: IPv4Address, gateway: IPv4Address?, ipv6: [IPv6Address]) {
+        self.name = name
+        self.index = index
+        self.displayName = displayName
+        self.kind = kind
+        self.mac = mac
+        self.ipv4 = ipv4
+        self.netmask = netmask
+        self.gateway = gateway
+        self.ipv6 = ipv6
+    }
+
     public var prefixLength: Int { netmask.value.nonzeroBitCount }
     public var subnet: IPv4Range { .subnet(address: ipv4, netmask: netmask) }
     public var cidr: String { "\(ipv4)/\(prefixLength)" }
@@ -106,8 +119,8 @@ public struct NetworkInterface: Identifiable, Hashable, Sendable {
     private static func defaultDisplayName(_ name: String, kind: Kind) -> String {
         switch kind {
         case .wifi: "Wi-Fi"
-        case .ethernet: "以太网"
-        case .bridge: "网桥"
+        case .ethernet: localized("Ethernet")
+        case .bridge: localized("Bridge")
         case .vpn: "VPN"
         case .other: name
         }

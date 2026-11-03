@@ -80,8 +80,8 @@ struct StatusDot: View {
             .fill(isOnline ? Color.green : Color.secondary.opacity(0.35))
             .frame(width: 8, height: 8)
             .shadow(color: isOnline ? .green.opacity(0.6) : .clear, radius: 3)
-            .help(isOnline ? "在线" : "离线")
-            .accessibilityLabel(isOnline ? "在线" : "离线")
+            .help(isOnline ? String(localized: "Online") : String(localized: "Offline"))
+            .accessibilityLabel(isOnline ? String(localized: "Online") : String(localized: "Offline"))
     }
 }
 
@@ -156,7 +156,7 @@ struct InfoRow: View {
                         Image(systemName: "doc.on.doc")
                     }
                     .buttonStyle(.borderless)
-                    .help("复制")
+                    .help("Copy")
                     .opacity(hovering ? 1 : 0)
                 }
             }
@@ -198,7 +198,7 @@ struct LatencyChart: View {
 extension Date {
     var relativeText: String {
         let seconds = -timeIntervalSinceNow
-        if seconds < 60 { return "刚刚" }
+        if seconds < 60 { return String(localized: "Just now") }
         return formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
     }
 }

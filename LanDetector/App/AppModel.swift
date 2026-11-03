@@ -17,7 +17,7 @@ struct SidebarCounts {
     var kinds: [DeviceKind: Int] = [:]
 }
 
-/// A change worth showing under "最近动态" in the network overview.
+/// A change worth showing under "Recent Activity" in the network overview.
 struct DeviceEvent: Identifiable {
     enum Kind { case joined, online, offline }
     let deviceID: String
@@ -43,7 +43,7 @@ final class AppModel {
     private(set) var shownRemoteSubnet: String?
 
     // MARK: Scan range
-    /// Saved custom ranges, edited in Settings ▸ 扫描.
+    /// Saved custom ranges, edited in Settings ▸ Scan.
     var rangePresets: [RangePreset] = Prefs.rangePresetsValue {
         didSet {
             Prefs.rangePresetsValue = rangePresets
@@ -72,7 +72,7 @@ final class AppModel {
     var searchText = ""
     var sortOrder: [KeyPathComparator<Device>] = [KeyPathComparator(\Device.sortableIP)]
     var showInspector = true
-    /// Visible columns, order and widths of the device table; persisted so the View ▸ 列 menu can change them.
+    /// Visible columns, order and widths of the device table; persisted so the View ▸ Columns menu can change them.
     var columnCustomization: TableColumnCustomization<Device> = AppModel.loadColumns() {
         didSet { AppModel.saveColumns(columnCustomization) }
     }
@@ -570,11 +570,11 @@ final class AppModel {
     /// Window title: the group of devices the list shows.
     var listTitle: String {
         switch sidebar ?? .all {
-        case .all: "全部设备"
-        case .online: "在线设备"
-        case .offline: "离线设备"
-        case .recent: "新设备"
-        case .favorites: "收藏"
+        case .all: String(localized: "All Devices")
+        case .online: String(localized: "Online Devices")
+        case .offline: String(localized: "Offline Devices")
+        case .recent: String(localized: "New Devices")
+        case .favorites: String(localized: "Favorites")
         case .kind(let kind): kind.title
         }
     }
@@ -582,13 +582,15 @@ final class AppModel {
     /// Window subtitle: what the list contains right now (or the scan's progress / the search result).
     var listSummary: String {
         guard interface != nil else { return "" }
-        if isScanning { return "正在扫描 \(Int(progress * 100))%" }
+        if isScanning { return String(localized: "Scanning \(Int(progress * 100))%") }
         let list = visibleDevices
-        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty { return "找到 \(list.count) 台" }
+        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty { return String(localized: "\(list.count) found") }
         let online = list.filter(\.isOnline).count
-        var text = online == list.count ? "\(list.count) 台在线" : "\(list.count) 台 · \(online) 台在线"
-        if isLive { text += " · 实时监控" }
-        if let range = selectedRange { text += " · 范围 \(range.title)" }
+        var text = online == list.count
+            ? String(localized: "\(list.count) online")
+            : String(localized: "\(list.count) total · \(online) online")
+        if isLive { text += " · " + String(localized: "Live monitoring") }
+        if let range = selectedRange { text += " · " + String(localized: "Range: \(range.title)") }
         return text
     }
 
@@ -690,7 +692,9 @@ final class AppModel {
         guard !targets.isEmpty, !ports.isEmpty, !portScanRunning else { return }
         portScanRunning = true
         portScanProgress = 0
-        portScanStatus = "正在扫描 \(targets.count) 台设备的 \(ports.count) 个端口…"
+        portScanStatus = targets.count == 1
+            ? String(localized: "Scanning \(ports.count) ports…")
+            : String(localized: "Scanning \(ports.count) ports on \(targets.count) devices…")
         let worstRTT = targets.compactMap { $0.0.latency }.max()
         let options = PortScanner.Options.adaptive(portCount: ports.count * targets.count, rtt: worstRTT)
         let endpoints = targets.flatMap { _, ip in ports.map { PortTarget(ip: ip, port: $0) } }
@@ -708,7 +712,7 @@ final class AppModel {
                 for ip in ips { inventory.setOpenPorts(byIP[ip] ?? [], for: ip) }
                 publish()
                 // Identify services on the open ports (web page titles, SSH / FTP greetings…).
-                portScanStatus = "正在识别服务…"
+                portScanStatus = String(localized: "Identifying services…")
                 let grabbable = open.filter { BannerGrabber.canGrab($0.port) }
                 await withTaskGroup(of: (PortTarget, String?).self) { group in
                     var pending = grabbable[...]
@@ -726,7 +730,9 @@ final class AppModel {
             }
             portScanRunning = false
             portScanProgress = 1
-            portScanStatus = Task.isCancelled ? "已取消" : "完成：发现 \(open.count) 个开放端口"
+            portScanStatus = Task.isCancelled
+                ? String(localized: "Canceled")
+                : String(localized: "Finished. Open ports: \(open.count)")
             publish()
             scheduleSave()
         }
@@ -797,3 +803,23 @@ final class AppModel {
         return count
     }
 }
+
+#if DEBUG
+extension AppModel {
+    /// Shows a made-up network for screenshots (see `DemoNetwork`): nothing is scanned, resolved or saved.
+    func showDemo(_ demo: DemoNetwork) {
+        bootstrapped = true
+        Prefs.registerDefaults()
+        interfaces = [demo.interface]
+        interface = demo.interface
+        dnsServers = demo.dnsServers
+        publicIP = demo.publicIP
+        networkKey = nil
+        inventory = DeviceInventory(devices: demo.devices)
+        lastScan = demo.lastScan
+        lastScanDate = demo.lastScanDate
+        completedScans = 1
+        publish()
+    }
+}
+#endif

@@ -15,9 +15,12 @@
 		5A1204B7ADB986918E611EFA /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B30A62EB978B8237ACB7E2 /* Components.swift */; };
 		5B71A2EEAB79C9A8273D94EF /* DeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28113149DAEE185D80EFB2E1 /* DeviceStore.swift */; };
 		624F7425F2CDF6794F28C665 /* LanDetectorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A170CE677FEAD5CD1C4FDEB /* LanDetectorApp.swift */; };
+		73D150989D6D7C473BE487FD /* DemoNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6749E813C815C645C1126129 /* DemoNetwork.swift */; };
+		749BC42D5F8185FDA9045767 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 447F76552C123503C5829B7F /* Localizable.xcstrings */; };
 		74F274E3717DA5B16C024A25 /* LanDetectorKit in Frameworks */ = {isa = PBXBuildFile; productRef = DDF98845F86E1C946DA60E5E /* LanDetectorKit */; };
 		7F02338CAE48572047E51FAF /* PresenceTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEFB8DEE49E5A341E90309C4 /* PresenceTimeline.swift */; };
 		88A79325109A2A4FC9C9D63E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FA1BEE0A6C7A8542476417C1 /* Sparkle */; };
+		8A5704332AC302688EFEC36C /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 6A99CEA6221ED05D7457385C /* InfoPlist.xcstrings */; };
 		8C7AA0C725AEF3269B4F181D /* DeviceInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C7804429E8760A638C38F9 /* DeviceInspector.swift */; };
 		9907CD66760D22BDD3543691 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422DDD93933097F2695A473F /* SidebarView.swift */; };
 		A26696A0151CF5459E41EFBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D343F328D29D8867F69D95F0 /* Assets.xcassets */; };
@@ -37,9 +40,12 @@
 		2A2F1B044783E4D5FB03D96A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3034E38132EF9767A49C4AF8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		422DDD93933097F2695A473F /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		447F76552C123503C5829B7F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		5A170CE677FEAD5CD1C4FDEB /* LanDetectorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanDetectorApp.swift; sourceTree = "<group>"; };
 		5ADF1FD26E5DED455C8C7678 /* DeviceActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceActions.swift; sourceTree = "<group>"; };
 		640B231D058F40D0107149F5 /* DeviceTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTableView.swift; sourceTree = "<group>"; };
+		6749E813C815C645C1126129 /* DemoNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoNetwork.swift; sourceTree = "<group>"; };
+		6A99CEA6221ED05D7457385C /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		7CB9CBFC5CBF60145359EC49 /* PortScanSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortScanSheet.swift; sourceTree = "<group>"; };
 		93F1EC8C01280819F45AACBC /* NetworkOverview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkOverview.swift; sourceTree = "<group>"; };
 		94C7804429E8760A638C38F9 /* DeviceInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInspector.swift; sourceTree = "<group>"; };
@@ -106,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				0B8464073FF2BC4914BB024C /* DebugSnapshot.swift */,
+				6749E813C815C645C1126129 /* DemoNetwork.swift */,
 				5ADF1FD26E5DED455C8C7678 /* DeviceActions.swift */,
 				D323617D0E4C25852EE230D3 /* Updater.swift */,
 			);
@@ -148,6 +155,8 @@
 				897DC5389EA7D17469B7E704 /* Views */,
 				D343F328D29D8867F69D95F0 /* Assets.xcassets */,
 				3034E38132EF9767A49C4AF8 /* Info.plist */,
+				6A99CEA6221ED05D7457385C /* InfoPlist.xcstrings */,
+				447F76552C123503C5829B7F /* Localizable.xcstrings */,
 			);
 			path = LanDetector;
 			sourceTree = "<group>";
@@ -192,10 +201,11 @@
 				};
 			};
 			buildConfigurationList = D76C698EDD1D78FC16814390 /* Build configuration list for PBXProject "LanDetector" */;
-			developmentRegion = "zh-Hans";
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				en,
 				"zh-Hans",
 			);
 			mainGroup = 3E4F651542037FE840A54F20;
@@ -220,6 +230,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A26696A0151CF5459E41EFBF /* Assets.xcassets in Resources */,
+				8A5704332AC302688EFEC36C /* InfoPlist.xcstrings in Resources */,
+				749BC42D5F8185FDA9045767 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,6 +246,7 @@
 				5A1204B7ADB986918E611EFA /* Components.swift in Sources */,
 				A49260FAFDBA6D3F678B43C9 /* ContentView.swift in Sources */,
 				D56B3394DF773313960E3497 /* DebugSnapshot.swift in Sources */,
+				73D150989D6D7C473BE487FD /* DemoNetwork.swift in Sources */,
 				282BC9AAA14363A841557CDB /* DeviceActions.swift in Sources */,
 				53219F8F183FF344D947844A /* DeviceGridView.swift in Sources */,
 				8C7AA0C725AEF3269B4F181D /* DeviceInspector.swift in Sources */,
@@ -320,7 +333,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -422,7 +435,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
 			};

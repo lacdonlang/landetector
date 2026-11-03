@@ -16,8 +16,8 @@ public enum OUIUpdater {
 
         public var errorDescription: String? {
             switch self {
-            case .download(let url): "无法下载 \(url)"
-            case .empty: "下载的数据为空"
+            case .download(let url): String(localized: "Couldn’t download \(url)", bundle: .module)
+            case .empty: String(localized: "The downloaded data is empty.", bundle: .module)
             }
         }
     }

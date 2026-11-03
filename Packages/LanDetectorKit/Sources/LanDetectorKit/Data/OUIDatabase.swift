@@ -149,7 +149,7 @@ public final class PortDatabase: Sendable {
             map[port] = Service(name: String(cols[1]), description: String(cols[2]))
         }
         for (port, hint) in Self.lanHints {
-            map[port] = Service(name: hint.0, description: hint.1)
+            map[port] = Service(name: hint.0, description: localized(hint.1))
         }
         services = map
     }
@@ -163,33 +163,33 @@ public final class PortDatabase: Sendable {
 
     /// Ports whose meaning on a home/office LAN differs from (or is missing in) the IANA registry.
     static let lanHints: [UInt16: (String, String)] = [
-        21: ("ftp", "FTP 文件传输"), 22: ("ssh", "SSH 远程登录"), 23: ("telnet", "Telnet"), 25: ("smtp", "SMTP 邮件"),
-        53: ("dns", "DNS 域名解析"), 80: ("http", "HTTP 网页"), 88: ("kerberos", "Kerberos"),
-        110: ("pop3", "POP3 邮件"), 111: ("rpcbind", "RPC 端口映射"), 135: ("msrpc", "Windows RPC"),
-        139: ("netbios-ssn", "NetBIOS 会话 (SMB)"), 143: ("imap", "IMAP 邮件"), 443: ("https", "HTTPS 网页"),
-        445: ("smb", "SMB 文件共享"), 515: ("printer", "LPD 打印"), 548: ("afp", "AFP 文件共享"),
-        554: ("rtsp", "RTSP 视频流"), 631: ("ipp", "IPP 打印"), 873: ("rsync", "rsync 同步"),
-        1080: ("socks", "SOCKS 代理"), 1400: ("sonos", "Sonos 控制"), 1883: ("mqtt", "MQTT 消息"),
-        1900: ("upnp", "UPnP / SSDP"), 2049: ("nfs", "NFS 文件共享"), 2375: ("docker", "Docker API"),
-        2376: ("docker-tls", "Docker API (TLS)"), 3000: ("http-dev", "Web 服务 (Grafana / 开发)"),
-        3128: ("squid", "HTTP 代理"), 3306: ("mysql", "MySQL"), 3389: ("rdp", "Windows 远程桌面"),
-        3689: ("daap", "iTunes 音乐共享"), 4070: ("spotify", "Spotify Connect"), 5000: ("upnp/dsm", "UPnP / AirPlay / Synology DSM"),
-        5001: ("dsm-https", "Synology DSM (HTTPS)"), 5037: ("adb-server", "ADB 服务"), 5060: ("sip", "SIP 语音"),
-        5222: ("xmpp", "XMPP"), 5353: ("mdns", "mDNS / Bonjour"), 5357: ("wsd", "Windows 网络发现 (WSD)"),
-        5432: ("postgresql", "PostgreSQL"), 5555: ("adb", "Android 调试 (ADB)"), 5900: ("vnc", "VNC / 屏幕共享"),
-        5985: ("winrm", "Windows 远程管理"), 5986: ("winrm-https", "Windows 远程管理 (HTTPS)"),
-        6379: ("redis", "Redis"), 6443: ("kube-api", "Kubernetes API"), 6668: ("tuya", "涂鸦智能设备"),
-        7000: ("airplay", "AirPlay"), 7100: ("airplay-fp", "AirPlay 镜像"), 7547: ("tr-069", "运营商远程管理 (TR-069)"),
-        8000: ("http-alt", "HTTP 备用 / 海康 SDK"), 8001: ("samsung-tv", "三星电视控制"), 8002: ("samsung-tv-tls", "三星电视控制 (TLS)"),
-        8008: ("cast-http", "Google Cast HTTP"), 8009: ("googlecast", "Google Cast"), 8060: ("roku-ecp", "Roku 外部控制"),
-        8080: ("http-proxy", "HTTP 备用 / 代理"), 8081: ("http-alt", "HTTP 备用"), 8123: ("home-assistant", "Home Assistant"),
-        8291: ("winbox", "MikroTik Winbox"), 8443: ("https-alt", "HTTPS 备用"), 8554: ("rtsp-alt", "RTSP 备用"),
-        8883: ("mqtts", "MQTT (TLS)"), 8888: ("http-alt", "HTTP 备用"), 9000: ("http-alt", "Web 服务 (Portainer 等)"),
-        9090: ("http-alt", "Web 服务 (Cockpit / Prometheus)"), 9091: ("transmission", "Transmission"),
-        9100: ("jetdirect", "RAW 打印 (JetDirect)"), 9443: ("https-alt", "HTTPS 备用"), 10000: ("webmin", "Webmin"),
-        27017: ("mongodb", "MongoDB"), 32400: ("plex", "Plex 媒体服务器"), 34567: ("dvr", "XMEye 录像机"),
-        37777: ("dahua", "大华设备"), 49152: ("upnp", "UPnP 服务"), 49153: ("upnp", "UPnP 服务"),
-        51820: ("wireguard", "WireGuard"), 62078: ("lockdown", "iPhone/iPad 同步服务"),
+        21: ("ftp", "FTP file transfer"), 22: ("ssh", "SSH remote login"), 23: ("telnet", "Telnet"), 25: ("smtp", "SMTP mail"),
+        53: ("dns", "DNS"), 80: ("http", "HTTP web"), 88: ("kerberos", "Kerberos"),
+        110: ("pop3", "POP3 mail"), 111: ("rpcbind", "RPC port mapper"), 135: ("msrpc", "Windows RPC"),
+        139: ("netbios-ssn", "NetBIOS session (SMB)"), 143: ("imap", "IMAP mail"), 443: ("https", "HTTPS web"),
+        445: ("smb", "SMB file sharing"), 515: ("printer", "LPD printing"), 548: ("afp", "AFP file sharing"),
+        554: ("rtsp", "RTSP video stream"), 631: ("ipp", "IPP printing"), 873: ("rsync", "rsync"),
+        1080: ("socks", "SOCKS proxy"), 1400: ("sonos", "Sonos control"), 1883: ("mqtt", "MQTT messaging"),
+        1900: ("upnp", "UPnP / SSDP"), 2049: ("nfs", "NFS file sharing"), 2375: ("docker", "Docker API"),
+        2376: ("docker-tls", "Docker API (TLS)"), 3000: ("http-dev", "Web service (Grafana / development)"),
+        3128: ("squid", "HTTP proxy"), 3306: ("mysql", "MySQL"), 3389: ("rdp", "Windows Remote Desktop"),
+        3689: ("daap", "iTunes music sharing"), 4070: ("spotify", "Spotify Connect"), 5000: ("upnp/dsm", "UPnP / AirPlay / Synology DSM"),
+        5001: ("dsm-https", "Synology DSM (HTTPS)"), 5037: ("adb-server", "ADB server"), 5060: ("sip", "SIP voice"),
+        5222: ("xmpp", "XMPP"), 5353: ("mdns", "mDNS / Bonjour"), 5357: ("wsd", "Windows network discovery (WSD)"),
+        5432: ("postgresql", "PostgreSQL"), 5555: ("adb", "Android debugging (ADB)"), 5900: ("vnc", "VNC / Screen Sharing"),
+        5985: ("winrm", "Windows Remote Management"), 5986: ("winrm-https", "Windows Remote Management (HTTPS)"),
+        6379: ("redis", "Redis"), 6443: ("kube-api", "Kubernetes API"), 6668: ("tuya", "Tuya smart device"),
+        7000: ("airplay", "AirPlay"), 7100: ("airplay-fp", "AirPlay mirroring"), 7547: ("tr-069", "ISP remote management (TR-069)"),
+        8000: ("http-alt", "HTTP alternate / Hikvision SDK"), 8001: ("samsung-tv", "Samsung TV control"), 8002: ("samsung-tv-tls", "Samsung TV control (TLS)"),
+        8008: ("cast-http", "Google Cast HTTP"), 8009: ("googlecast", "Google Cast"), 8060: ("roku-ecp", "Roku external control"),
+        8080: ("http-proxy", "HTTP alternate / proxy"), 8081: ("http-alt", "HTTP alternate"), 8123: ("home-assistant", "Home Assistant"),
+        8291: ("winbox", "MikroTik Winbox"), 8443: ("https-alt", "HTTPS alternate"), 8554: ("rtsp-alt", "RTSP alternate"),
+        8883: ("mqtts", "MQTT (TLS)"), 8888: ("http-alt", "HTTP alternate"), 9000: ("http-alt", "Web service (Portainer etc.)"),
+        9090: ("http-alt", "Web service (Cockpit / Prometheus)"), 9091: ("transmission", "Transmission"),
+        9100: ("jetdirect", "RAW printing (JetDirect)"), 9443: ("https-alt", "HTTPS alternate"), 10000: ("webmin", "Webmin"),
+        27017: ("mongodb", "MongoDB"), 32400: ("plex", "Plex Media Server"), 34567: ("dvr", "XMEye DVR"),
+        37777: ("dahua", "Dahua device"), 49152: ("upnp", "UPnP service"), 49153: ("upnp", "UPnP service"),
+        51820: ("wireguard", "WireGuard"), 62078: ("lockdown", "iPhone/iPad sync service"),
     ]
 }
 
@@ -226,10 +226,10 @@ public enum PortPreset: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var title: String {
         switch self {
-        case .common: "常用端口（\(PortPreset.commonPorts.count) 个）"
-        case .wellKnown: "知名端口（1–1024）"
-        case .all: "全部端口（1–65535）"
-        case .custom: "自定义"
+        case .common: String(localized: "Common Ports (\(PortPreset.commonPorts.count))", bundle: .module)
+        case .wellKnown: String(localized: "Well-Known Ports (1–1024)", bundle: .module)
+        case .all: String(localized: "All Ports (1–65535)", bundle: .module)
+        case .custom: String(localized: "Custom", bundle: .module)
         }
     }
 

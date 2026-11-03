@@ -1,115 +1,74 @@
-# LanDetector
+<p align="center">
+  <img src="LanDetector/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png" width="128" alt="LanDetector icon">
+</p>
 
-原生 macOS 局域网扫描器，完整覆盖 LanScan 的功能，并在识别能力、界面和监控上全面增强。
-Swift 6 + SwiftUI（macOS 26 Liquid Glass）。唯一的第三方依赖是用于在线更新的 Sparkle，无统计 SDK。
+<h1 align="center">LanDetector</h1>
 
-## 功能
+<p align="center">A native macOS network scanner that finds every device on your LAN and tells you what it is.<br>
+macOS 26 Tahoe or later · Apple silicon and Intel · English and Simplified Chinese</p>
 
-| 能力 | LanScan | LanDetector |
-|---|---|---|
-| IPv4 子网 / 自定义区间扫描 | ✓ | ✓ 约 4 秒扫完 /24，首个结果 < 0.1 秒；可保存多个命名区间，侧栏网络菜单一键切换；跨路由扫描其他网段时沿用该网段自己的设备库 |
-| ARP / MAC 获取 | ✓（macOS 27 被系统屏蔽） | ✓ sysctl + `arp` 回退，按过期时间判断新鲜度 |
-| ICMP 存活 + 延迟 | ✓ | ✓ 延迟曲线、持续 Ping |
-| IPv6 本地 / 全局地址 | ✓ | ✓ 组播发现 + NDP + EUI-64 反推 MAC |
-| DNS / mDNS / SMB 主机名 | ✓ | ✓ 系统 DNS 查不到时再问局域网里的路由器（DHCP 租约里的主机名，跨网段同样有效） |
-| 厂商（IEEE 全部注册表） | ✓ | ✓ 可在线更新 |
-| 设备识别 (NDI) | 付费、按期购买 | ✓ Bonjour TXT + AppleDB 型号 + UPnP + NetBIOS + 主机名 + 厂商 + 端口 + Banner 多信号融合 |
-| UPnP / SSDP | ✗ | ✓ 友好名称、制造商、型号 |
-| Bonjour 服务列表 | ✗ | ✓ 含 TXT 记录 |
-| 端口扫描 | ✓ | ✓ kqueue 高并发、IANA 服务名、HTTP 标题 / SSH 等 Banner |
-| 实时监控 | ✓ | ✓ 离线判定、新设备通知、单台设备上下线提醒、菜单栏常驻 |
-| 设备库 | ✗ | ✓ 按网络持久化：首次发现、最后在线、近 30 天在线时间线与在线率；网关更换或 MAC 变化后按网段与共有设备自动认出同一网络并合并历史 |
-| 网络概览 | ✗ | ✓ 未选中设备时检查器显示在线统计、类型分布、最近上线 / 离线动态 |
-| 自定义名称 / 备注 / 网址 | ✓ | ✓ 另有收藏、手动指定类型 |
-| 导入导出自定义名称 | ✓ 软/硬导入 | ✓ 软/硬导入 |
-| 导出结果 | CSV/TSV/PSV | CSV（逗号/分号）/TSV/PSV/JSON/Markdown |
-| 快捷操作 | 浏览器打开 | 网页、SSH、SMB、屏幕共享、网络唤醒、复制 |
-| 界面 | 单表格 | 侧边栏分组 + 表格/卡片双视图 + 检查器，深浅色 |
+<p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-## 构建
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/en/dark/devices.jpg">
+  <img src="docs/images/en/light/devices.jpg" alt="LanDetector showing the devices on a home network, with a NAS selected in the inspector">
+</picture>
 
-需要 Xcode 26+（开发于 Xcode 27 / macOS 27）与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)。
+LanDetector scans a /24 in about four seconds, shows the first devices within a tenth of a second, and keeps a history of every network you scan. It combines ARP, ICMP, mDNS / Bonjour, NetBIOS, reverse DNS, UPnP and port banners to name each device and work out its vendor, model and type – not just its IP and MAC address. Written in Swift 6 and SwiftUI; the only third-party code is [Sparkle](https://sparkle-project.org) for updates, and there is no analytics.
+
+## Features
+
+- **Fast discovery**: ICMP sweep plus ARP, IPv6 neighbor discovery and multicast probes; scan the whole subnet or saved ranges, including ranges behind another router.
+- **Identification**: combines Bonjour TXT records, Apple model identifiers, UPnP descriptions, NetBIOS and DNS names, the IEEE vendor registries, open ports and service banners into a device type, model and OS.
+- **Device history**: every network keeps its own inventory with first and last seen dates, a 30-day presence timeline and uptime, and is recognized again after a router or MAC address change.
+- **Live monitoring**: rescans on a schedule, notifies you about new devices and about devices you watch coming online or going offline, and lives in the menu bar.
+- **Network overview**: online, offline and new devices, device types and recent activity at a glance.
+- **Port scanning**: fast concurrent TCP scans with IANA service names, web page titles and SSH / FTP greetings.
+- **Quick actions**: open a device's web page, SSH, file sharing or Screen Sharing, wake it with Wake on LAN, copy its details.
+- **Your own notes**: custom names, notes, URLs, favorites and device types; import and export them.
+- **Export**: CSV, TSV, PSV, JSON or Markdown.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/en/dark/overview.jpg">
+  <img src="docs/images/en/light/overview.jpg" alt="The network overview in the inspector: online, offline and new devices, device types and recent activity">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/en/dark/cards.jpg">
+  <img src="docs/images/en/light/cards.jpg" alt="The card view, with an Apple TV and its Bonjour services in the inspector">
+</picture>
+
+## Install
+
+Download the latest `LanDetector-<version>.dmg` from [Releases](https://github.com/lacdonlang/landetector/releases) and drag LanDetector into Applications. On the first scan, allow access to the local network when macOS asks. LanDetector checks for updates once a day and installs them after verifying their signature (LanDetector ▸ Check for Updates… checks right away).
+
+The interface follows your system language. To use a different language for LanDetector only, choose it in System Settings ▸ General ▸ Language & Region ▸ Applications.
+
+> [!NOTE]
+> macOS 27 only reveals the MAC addresses in the ARP table to apps signed with a Developer ID, which the releases are. A build you sign yourself in another way scans fine but shows no MAC addresses or vendors.
+
+## Build from source
+
+Requires Xcode 26 or later (developed with Xcode 27 on macOS 27) and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```bash
 Scripts/build.sh --open
 ```
 
-或 `xcodegen generate` 后用 Xcode 打开 `LanDetector.xcodeproj`。`project.yml` 是工程的唯一来源，新增文件后需重新生成。
+Or run `xcodegen generate` and open `LanDetector.xcodeproj`; `project.yml` is the source of truth for the project. Signing uses the `Developer ID Application` certificate of `DEVELOPMENT_TEAM` in `project.yml` – change it to your own.
 
-**签名**：macOS 27 只向 Developer ID 签名的进程开放 ARP/NDP 表里的 MAC 地址，因此 Debug 与 Release 都使用 `Developer ID Application` 证书签名（`project.yml` 中的 `DEVELOPMENT_TEAM`）。换用其他证书时请同步修改；ad-hoc 签名的构建能扫描，但拿不到 MAC。
+- [Development](docs/en/DEVELOPMENT.md): the command-line tool, tests, debug hooks, screenshots and translations.
+- [Releasing](docs/en/RELEASING.md): the tag-triggered release workflow, signing, notarization and updates.
+- [Requirements](docs/en/REQUIREMENTS.md) and [plan](docs/en/PLAN.md).
 
-首次扫描时系统会请求"本地网络"权限，需要允许。
+## Data sources
 
-## 发布与在线更新
+All public or open source:
 
-推送 `v` 开头的 tag 即触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：运行测试，构建通用（Apple 芯片 + Intel）Release，用 Developer ID 签名并公证，再发布 GitHub Release：`LanDetector-<版本>.zip`、它的 SHA-256 和 `appcast.xml`。版本号取自 tag，tag 的说明就是更新说明（以 `- ` 开头的行显示为列表）；带后缀的 tag（如 `v1.1.0-beta.1`）发布为预发布版本。
-
-```bash
-git tag -a v1.1.0 -m "- 新功能一" -m "- 修复二"
-git push origin v1.1.0
-```
-
-已安装的应用用 [Sparkle](https://sparkle-project.org) 每天检查一次最新 Release 里的 `appcast.xml`（也可在应用菜单里“检查更新…”），校验 EdDSA 签名与开发者签名后替换自身。Debug 构建不检查更新。预发布版本不会推送给已安装的应用。
-
-仓库 Secrets 与 Fidget 同名，运行 `Scripts/setup-release-secrets.sh` 按提示配置：
-
-| Secret | 内容 |
-| --- | --- |
-| `MACOS_CERTIFICATE_P12`、`MACOS_CERTIFICATE_PASSWORD` | `Developer ID Application` 证书（含私钥）导出的 .p12 的 base64，及其密码 |
-| `NOTARY_APPLE_ID`、`NOTARY_TEAM_ID`、`NOTARY_PASSWORD` | 公证用的 Apple ID、Team ID 与 App 专用密码 |
-| `SPARKLE_ED_PRIVATE_KEY` | 给更新包签名的 EdDSA 私钥；公钥是 `project.yml` 里的 `SUPublicEDKey` |
-
-Sparkle 私钥同时保存在维护者的登录钥匙串（账号 `com.lacdon.LanDetector`），务必随钥匙串备份：丢失后已安装的版本再也收不到更新。缺少证书时改为 ad-hoc 签名，能扫描但拿不到 MAC，也不生成 `appcast.xml`；缺少公证凭据时跳过公证。仓库必须保持公开，已安装的应用要匿名下载更新。在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
-
-## 命令行调试
-
-核心引擎位于本地 Swift Package `Packages/LanDetectorKit`，附带命令行工具：
-
-```bash
-Scripts/cli.sh scan --verbose
-```
-
-```bash
-Scripts/cli.sh scan --range 192.168.77.1/24 --dns 192.168.99.1
-```
-
-```bash
-Scripts/cli.sh ports 192.168.1.1 common
-```
-
-```bash
-cd Packages/LanDetectorKit && swift test
-```
-
-Debug 构建内置几个由环境变量开启的自检钩子（`LanDetector/Support/DebugSnapshot.swift`）：
-
-- `LANDETECTOR_SNAPSHOT_DIR=<目录>`：依次切换列表 / 卡片 / 深色模式并把窗口渲染成 PNG（无需屏幕录制权限；玻璃材质的侧栏与检查器渲染不出来）。
-- `LANDETECTOR_GALLERY_DIR=<目录>`：把侧栏、检查器（本机 / 网关 / 普通设备、深浅色）、设置各页、端口扫描面板、菜单栏面板分别放进普通离屏窗口渲染，弥补上一项拍不到玻璃面板的不足；主窗口按 1440 宽截图。
-- `LANDETECTOR_WIDTH_TEST=1`：在列表、卡片视图中依次选中每台设备并记录各栏宽度，检查器宽度必须始终不变。
-- `LANDETECTOR_TOOLBAR_TEST=1`：记录每个工具栏项位于哪一栏（检查器显示 / 隐藏各一次），并验证搜索框输入能筛选列表、⌘F 能聚焦搜索框。玻璃材质截不到图，工具栏布局以这里的坐标为准。
-- `LANDETECTOR_RANGE_TEST=1`：选中一个跨路由的范围预设后启动，自动切到"整个子网"再切回来，记录每次显示的设备库与在线设备的名称、类型、厂商。
-- `LANDETECTOR_RESIZE_TEST=1`（可加 `LANDETECTOR_CHAOS=1`）：反复缩放窗口并切换视图与检查器，用于回归 SwiftUI 布局循环崩溃。详情列内容必须保持 `idealWidth: 0`，否则检查器打开时窗口变窄会触发 AppKit "Update Constraints" 死循环。
-
-```bash
-LANDETECTOR_RESIZE_TEST=1 LANDETECTOR_CHAOS=1 build/DerivedData/Build/Products/Debug/LanDetector.app/Contents/MacOS/LanDetector
-```
-
-## 数据来源（全部公开 / 开源）
-
-| 数据 | 来源 | 许可 |
+| Data | Source | License |
 |---|---|---|
-| MAC 厂商 | IEEE Registration Authority（MA-L / MA-M / MA-S / IAB / CID） | 公开 |
-| 端口服务名 | IANA Service Name and Transport Protocol Port Number Registry | 公开 |
-| Apple 型号 | [AppleDB](https://appledb.dev) | MIT |
+| MAC vendors | IEEE Registration Authority (MA-L / MA-M / MA-S / IAB / CID) | Public |
+| Port service names | IANA Service Name and Transport Protocol Port Number Registry | Public |
+| Apple models | [AppleDB](https://appledb.dev) | MIT |
 
-更新内置数据：`python3 Scripts/update_data.py`。应用内也可在 设置 ▸ 数据 中在线更新厂商库。
-
-## 目录
-
-```
-project.yml                 XcodeGen 工程定义
-LanDetector/                SwiftUI 应用（模型、视图、持久化、导出）
-Packages/LanDetectorKit/    扫描引擎、协议探测、识别、数据库（+ CLI 与测试）
-Scripts/                    数据生成、图标生成、构建脚本
-docs/                       需求清单与实施计划
-```
+Refresh the built-in data with `python3 Scripts/update_data.py`; the vendor database can also be updated in the app (Settings ▸ Data).

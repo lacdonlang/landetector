@@ -35,6 +35,13 @@ struct LanDetectorApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["LANDETECTOR_DEMO"] != nil {
+                AppModel.shared.showDemo(.make())
+                DebugSnapshot.scheduleIfRequested()
+                return
+            }
+            #endif
             AppModel.shared.bootstrap()
             Updater.start()
             #if DEBUG
@@ -54,83 +61,89 @@ struct AppCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .appInfo) {
             if Updater.isAvailable {
-                Button("检查更新…") { Updater.checkForUpdates() }
+                Button("Check for Updates…") { Updater.checkForUpdates() }
             }
         }
 
         CommandGroup(replacing: .newItem) {}
 
         CommandGroup(after: .textEditing) {
-            Button("查找设备") { ToolbarSearchField.focus() }
+            Button("Find Device") { ToolbarSearchField.focus() }
                 .keyboardShortcut("f")
         }
 
-        CommandMenu("扫描") {
-            Button(model.isScanning ? "停止扫描" : "开始扫描") {
+        CommandMenu("Scan") {
+            Button(model.isScanning ? String(localized: "Stop Scan") : String(localized: "Start Scan")) {
                 model.isScanning ? model.stopScan() : model.startScan()
             }
             .keyboardShortcut("r")
-            Button(model.isLive ? "停止实时监控" : "开始实时监控") { model.toggleLive() }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
+            Button(model.isLive ? String(localized: "Stop Live Monitoring") : String(localized: "Start Live Monitoring")) {
+                model.toggleLive()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
             Divider()
-            Button("端口扫描…") { model.showPortScanSheet = true }
+            Button("Port Scan…") { model.showPortScanSheet = true }
                 .keyboardShortcut("p", modifiers: [.command, .option])
             Divider()
-            Button("清空结果") { model.clearResults() }
+            Button("Clear Results") { model.clearResults() }
                 .keyboardShortcut("k")
-            Button("刷新公网 IP") { model.refreshPublicIP() }
-            Button("刷新网络接口") { model.refreshInterfaces() }
+            Button("Refresh Public IP") { model.refreshPublicIP() }
+            Button("Refresh Network Interfaces") { model.refreshInterfaces() }
         }
 
-        CommandMenu("设备") {
+        CommandMenu("Device") {
             let selected = model.selectedDevices
             let single = selected.count == 1 ? selected.first : nil
-            Button("在浏览器中打开") { if let d = single { DeviceActions.openWeb(d) } }
+            Button("Open in Browser") { if let d = single { DeviceActions.openWeb(d) } }
                 .keyboardShortcut("o")
                 .disabled(single?.ipv4 == nil)
-            Button("重命名…") { if let d = single { model.requestRename(d.id) } }
+            Button("Rename…") { if let d = single { model.requestRename(d.id) } }
                 .disabled(single == nil)
-            Button(selected.allSatisfy(\.isFavorite) && !selected.isEmpty ? "取消收藏" : "收藏") {
+            Button(selected.allSatisfy(\.isFavorite) && !selected.isEmpty
+                   ? String(localized: "Remove from Favorites") : String(localized: "Add to Favorites")) {
                 model.toggleFavorite(model.selection)
             }
             .keyboardShortcut("d")
             .disabled(selected.isEmpty)
-            Button(selected.allSatisfy(\.isWatched) && !selected.isEmpty ? "关闭上下线提醒" : "开启上下线提醒") {
+            Button(selected.allSatisfy(\.isWatched) && !selected.isEmpty
+                   ? String(localized: "Turn Off Online/Offline Alerts") : String(localized: "Turn On Online/Offline Alerts")) {
                 model.toggleWatch(model.selection)
             }
             .disabled(selected.isEmpty)
             Divider()
-            Button("拷贝 IP 地址") {
+            Button("Copy IP Address") {
                 DeviceActions.copy(selected.compactMap { $0.ipv4?.description }.joined(separator: "\n"))
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(selected.allSatisfy { $0.ipv4 == nil })
-            Button("拷贝 MAC 地址") {
+            Button("Copy MAC Address") {
                 DeviceActions.copy(selected.compactMap { $0.mac?.description }.joined(separator: "\n"))
             }
             .keyboardShortcut("c", modifiers: [.command, .option, .shift])
             .disabled(selected.allSatisfy { $0.mac == nil })
             Divider()
-            Button("扫描端口…") { model.showPortScanSheet = true }
+            Button("Scan Ports…") { model.showPortScanSheet = true }
                 .disabled(selected.isEmpty)
-            Button("网络唤醒") {
+            Button("Wake on LAN") {
                 for d in selected { DeviceActions.wake(d, broadcast: model.interface?.broadcast) }
             }
             .disabled(selected.allSatisfy { $0.mac == nil })
             Divider()
-            Button("从列表中移除") { model.forget(model.selection) }
+            Button("Remove from List") { model.forget(model.selection) }
                 .keyboardShortcut(.delete, modifiers: [.command])
                 .disabled(selected.isEmpty)
         }
 
         CommandGroup(before: .toolbar) {
-            Button("列表视图") { model.viewMode = .table }
+            Button("View as List") { model.viewMode = .table }
                 .keyboardShortcut("1")
-            Button("卡片视图") { model.viewMode = .grid }
+            Button("View as Cards") { model.viewMode = .grid }
                 .keyboardShortcut("2")
-            Button(model.showInspector ? "隐藏检查器" : "显示检查器") { model.showInspector.toggle() }
-                .keyboardShortcut("i", modifiers: [.command, .option])
-            Menu("列") {
+            Button(model.showInspector ? String(localized: "Hide Inspector") : String(localized: "Show Inspector")) {
+                model.showInspector.toggle()
+            }
+            .keyboardShortcut("i", modifiers: [.command, .option])
+            Menu("Columns") {
                 ForEach(DeviceColumn.toggleable) { column in
                     Toggle(column.title, isOn: Binding(
                         get: { model.isColumnVisible(column) },
@@ -138,32 +151,32 @@ struct AppCommands: Commands {
                     ))
                 }
                 Divider()
-                Button("恢复默认列") { model.resetColumns() }
+                Button("Restore Default Columns") { model.resetColumns() }
             }
             Divider()
-            Button("放大字号") { model.textScale = min(1.4, model.textScale + 0.05) }
+            Button("Make Text Bigger") { model.textScale = min(1.4, model.textScale + 0.05) }
                 .keyboardShortcut("+")
-            Button("缩小字号") { model.textScale = max(0.85, model.textScale - 0.05) }
+            Button("Make Text Smaller") { model.textScale = max(0.85, model.textScale - 0.05) }
                 .keyboardShortcut("-")
-            Button("默认字号") { model.textScale = 1 }
+            Button("Reset Text Size") { model.textScale = 1 }
                 .keyboardShortcut("0")
             Divider()
         }
 
         CommandGroup(replacing: .importExport) {
-            Menu("导出结果") {
+            Menu("Export Results") {
                 ForEach(Exporter.Format.allCases) { format in
                     Button(format.title) { Exporter.export(model.visibleDevices, as: format) }
                 }
             }
-            Button("导出为 CSV…") { Exporter.export(model.visibleDevices, as: .csv) }
+            Button("Export as CSV…") { Exporter.export(model.visibleDevices, as: .csv) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
             Divider()
-            Button("导出自定义名称…") { Exporter.exportCustomNames(model.exportCustomNames()) }
-            Button("导入自定义名称（软导入）…") {
+            Button("Export Custom Names…") { Exporter.exportCustomNames(model.exportCustomNames()) }
+            Button("Import Custom Names (Keep Existing)…") {
                 if let records = Exporter.pickCustomNamesFile() { _ = model.importCustomNames(records, overwrite: false) }
             }
-            Button("导入自定义名称（硬导入）…") {
+            Button("Import Custom Names (Overwrite Existing)…") {
                 if let records = Exporter.pickCustomNamesFile() { _ = model.importCustomNames(records, overwrite: true) }
             }
         }

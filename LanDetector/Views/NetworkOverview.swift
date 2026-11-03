@@ -15,16 +15,25 @@ struct NetworkOverview: View {
             Section {
                 header
                 HStack(spacing: 0) {
-                    StatButton(value: counts.online, title: "在线", color: .green) { model.sidebar = .online }
+                    StatButton(value: counts.online, title: String(localized: "Online"),
+                               help: String(localized: "Show online devices in the list"), color: .green) {
+                        model.sidebar = .online
+                    }
                     Divider().frame(height: 30)
-                    StatButton(value: counts.offline, title: "离线", color: .primary) { model.sidebar = .offline }
+                    StatButton(value: counts.offline, title: String(localized: "Offline"),
+                               help: String(localized: "Show offline devices in the list"), color: .primary) {
+                        model.sidebar = .offline
+                    }
                     Divider().frame(height: 30)
-                    StatButton(value: counts.recent, title: "新设备", color: .orange) { model.sidebar = .recent }
+                    StatButton(value: counts.recent, title: String(localized: "New Devices"),
+                               help: String(localized: "Show new devices in the list"), color: .orange) {
+                        model.sidebar = .recent
+                    }
                 }
             }
 
             if !kinds.isEmpty {
-                Section("设备类型") {
+                Section("Device Types") {
                     ForEach(kinds, id: \.0) { kind, count in
                         Button {
                             model.sidebar = .kind(kind)
@@ -32,14 +41,14 @@ struct NetworkOverview: View {
                             KindRow(kind: kind, count: count, fraction: Double(count) / Double(largest))
                         }
                         .buttonStyle(.plain)
-                        .help("在列表中只显示\(kind.title)")
+                        .help("Show only \(kind.title) devices in the list")
                     }
                 }
             }
 
-            Section("最近动态") {
+            Section("Recent Activity") {
                 if events.isEmpty {
-                    Text("还没有上线或离线记录。多扫描几次或开启实时监控后，这里会列出设备的变化。")
+                    Text("No devices have come online or gone offline yet. Changes appear here after a few more scans or with live monitoring on.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 } else {
@@ -57,24 +66,24 @@ struct NetworkOverview: View {
             }
 
             if let iface = model.interface {
-                Section("网络信息") {
-                    InfoRow(label: "本机 IP", value: iface.ipv4.description, monospaced: true)
-                    InfoRow(label: "本机 MAC", value: iface.mac?.description, monospaced: true)
-                    InfoRow(label: "网关", value: iface.gateway?.description, monospaced: true)
+                Section("Network Info") {
+                    InfoRow(label: String(localized: "This Mac’s IP"), value: iface.ipv4.description, monospaced: true)
+                    InfoRow(label: String(localized: "This Mac’s MAC"), value: iface.mac?.description, monospaced: true)
+                    InfoRow(label: String(localized: "Gateway"), value: iface.gateway?.description, monospaced: true)
                     InfoRow(label: "DNS", value: model.dnsServers.joined(separator: "\n").nilIfEmpty, monospaced: true)
                     if let pub = model.publicIP {
-                        InfoRow(label: "公网 IPv4", value: pub.ipv4, monospaced: true)
-                        InfoRow(label: "公网 IPv6", value: pub.ipv6, monospaced: true)
-                        InfoRow(label: "运营商", value: pub.isp)
-                        InfoRow(label: "位置", value: [pub.flag, pub.locationText].compactMap { $0 }.joined(separator: " ").nilIfEmpty)
+                        InfoRow(label: String(localized: "Public IPv4"), value: pub.ipv4, monospaced: true)
+                        InfoRow(label: String(localized: "Public IPv6"), value: pub.ipv6, monospaced: true)
+                        InfoRow(label: String(localized: "ISP"), value: pub.isp)
+                        InfoRow(label: String(localized: "Location"), value: [pub.flag, pub.locationText].compactMap { $0 }.joined(separator: " ").nilIfEmpty)
                     }
                 }
             }
 
-            Section("扫描") {
-                LabeledContent("上次扫描", value: lastScanText)
-                LabeledContent("范围", value: rangeText)
-                LabeledContent("MAC 来源", value: sourceText)
+            Section("Scan") {
+                LabeledContent("Last Scan", value: lastScanText)
+                LabeledContent("Range", value: rangeText)
+                LabeledContent("MAC Source", value: sourceText)
             }
         }
         .formStyle(.grouped)
@@ -95,7 +104,7 @@ struct NetworkOverview: View {
                     if let remote = model.shownRemoteSubnet {
                         // A range behind a router: name it after the preset, and say how it is reached.
                         Text(model.selectedRange?.name.nilIfEmpty ?? remote).font(.title3.weight(.semibold))
-                        Text(verbatim: "\(remote) · 经由 \(iface.displayName)")
+                        Text("\(remote) · via \(iface.displayName)")
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                     } else {
@@ -111,26 +120,27 @@ struct NetworkOverview: View {
     }
 
     private var lastScanText: String {
-        if model.isScanning { return "正在扫描 \(Int(model.progress * 100))%" }
-        guard let date = model.lastScanDate else { return "尚未扫描" }
+        if model.isScanning { return String(localized: "Scanning \(Int(model.progress * 100))%") }
+        guard let date = model.lastScanDate else { return String(localized: "Not scanned yet") }
         var text = date.formatted(date: .omitted, time: .shortened)
         if let summary = model.lastScan {
-            text += String(format: " · 用时 %.1f 秒 · %d 个地址", summary.duration, summary.hostsProbed)
+            let seconds = summary.duration.formatted(.number.precision(.fractionLength(1)))
+            text += " · " + String(localized: "\(seconds) s") + " · " + String(localized: "\(summary.hostsProbed) addresses")
         }
         return text
     }
 
     private var rangeText: String {
         if let range = model.selectedRange { return range.name.isEmpty ? range.range : "\(range.name) · \(range.range)" }
-        return "整个子网" + (model.interface.map { " · " + NetworkMatcher.subnetKey($0.ipv4, netmask: $0.netmask) } ?? "")
+        return String(localized: "Entire Subnet") + (model.interface.map { " · " + NetworkMatcher.subnetKey($0.ipv4, netmask: $0.netmask) } ?? "")
     }
 
     private var sourceText: String {
-        if model.shownRemoteSubnet != nil { return "跨路由，无法获取" }
+        if model.shownRemoteSubnet != nil { return String(localized: "Unavailable across a router") }
         return switch model.lastScan?.neighborSource {
-        case .sysctl: "系统 ARP 表"
-        case .arpCommand: "arp 命令"
-        case .unavailable: "不可用（需要 Developer ID 签名）"
+        case .sysctl: String(localized: "System ARP table")
+        case .arpCommand: String(localized: "arp command")
+        case .unavailable: String(localized: "Unavailable (requires Developer ID signing)")
         case nil: "—"
         }
     }
@@ -139,6 +149,7 @@ struct NetworkOverview: View {
 private struct StatButton: View {
     let value: Int
     let title: String
+    let help: String
     let color: Color
     let action: () -> Void
 
@@ -157,7 +168,7 @@ private struct StatButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("在列表中显示\(title)的设备")
+        .help(help)
     }
 }
 
@@ -209,7 +220,7 @@ private struct EventRow: View {
                 .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
-        .help("在检查器中查看此设备")
+        .help("Show this device in the inspector")
     }
 
     private var symbol: String {
@@ -230,9 +241,9 @@ private struct EventRow: View {
 
     private var label: String {
         switch event.kind {
-        case .joined: "首次发现"
-        case .online: "上线"
-        case .offline: "离线"
+        case .joined: String(localized: "Discovered")
+        case .online: String(localized: "Came online")
+        case .offline: String(localized: "Went offline")
         }
     }
 }

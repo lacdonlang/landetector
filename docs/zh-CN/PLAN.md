@@ -1,5 +1,7 @@
 # LanDetector 实施计划
 
+[English](../en/PLAN.md) · **简体中文**
+
 ## 技术选型
 - Swift 6.x、SwiftUI（macOS 26+，Liquid Glass），少量 AppKit（保存面板、剪贴板、打开 URL）
 - 工程：XcodeGen（`project.yml` 为唯一事实来源）+ 本地 Swift Package `LanDetectorKit`（核心逻辑，可用 `swift build` / `swift test` 独立迭代）

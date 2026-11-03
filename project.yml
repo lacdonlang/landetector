@@ -4,7 +4,7 @@ options:
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
-  developmentLanguage: zh-Hans
+  developmentLanguage: en
   groupSortPosition: top
 
 packages:
@@ -29,7 +29,7 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    SWIFT_EMIT_LOC_STRINGS: NO
+    SWIFT_EMIT_LOC_STRINGS: YES
 
 targets:
   LanDetector:
@@ -52,11 +52,12 @@ targets:
         SUFeedURL: https://github.com/lacdonlang/landetector/releases/latest/download/appcast.xml
         SUPublicEDKey: MwbY712Euqk3ndNUlnl2DU/F3tR12ycdPBkj6hB8Rn4=
         SUEnableAutomaticChecks: true
-        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleDevelopmentRegion: en
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: "© 2026 LanDetector"
-        NSLocalNetworkUsageDescription: "LanDetector 需要访问本地网络，以发现、识别并监控局域网中的设备。"
+        # Translated in InfoPlist.xcstrings.
+        NSLocalNetworkUsageDescription: "LanDetector needs local network access to discover, identify and monitor the devices on your network."
         NSBonjourServices:
           - _services._dns-sd._udp
           - _airplay._tcp

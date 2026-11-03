@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import LanDetectorKit
+import ScreenCaptureKit
 import SwiftUI
 
 /// Debug-only: renders the main window to PNG files without needing screen-recording permission.
@@ -23,6 +24,9 @@ enum DebugSnapshot {
                 try? await Task.sleep(for: .seconds(9))
                 await runToolbarTest()
             }
+        }
+        if let dir = ProcessInfo.processInfo.environment["LANDETECTOR_SCREENSHOTS"] {
+            Task { @MainActor in await runScreenshots(to: URL(fileURLWithPath: dir)) }
         }
         if let dir = ProcessInfo.processInfo.environment["LANDETECTOR_GALLERY_DIR"] {
             Task { @MainActor in
@@ -60,6 +64,90 @@ enum DebugSnapshot {
                 }
             }
         }
+    }
+
+    /// README screenshots of the demo network (run with LANDETECTOR_DEMO=1, see Scripts/screenshots.sh): the main window
+    /// as the window server draws it, glass included, which needs the Screen Recording permission. Quits when done.
+    static func runScreenshots(to base: URL) async {
+        let model = AppModel.shared
+        let log: (String) -> Void = { FileHandle.standardError.write(Data("screenshots: \($0)\n".utf8)) }
+        if let appearance = ProcessInfo.processInfo.environment["LANDETECTOR_APPEARANCE"] {
+            NSApp.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
+        }
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        NSApp.activate()
+        var main: NSWindow?
+        for _ in 0..<30 where main == nil {
+            try? await Task.sleep(for: .milliseconds(500))
+            main = NSApp.windows.first { $0.isVisible && $0.frame.width > 600 }
+        }
+        guard let window = main else {
+            log("no main window: \(NSApp.windows.map { "\($0.title) \($0.frame) visible=\($0.isVisible)" })")
+            exit(1)
+        }
+        window.setContentSize(NSSize(width: 1680, height: 860))
+        window.center()
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+        let nas = model.devices.first { $0.effectiveKind == .nas }
+        let appleTV = model.devices.first { $0.model?.hasPrefix("Apple TV") == true }
+        let shots: [(String, @MainActor () -> Void)] = [
+            ("devices", {
+                model.viewMode = .table
+                model.showInspector = true
+                model.selection = nas.map { [$0.id] } ?? []
+            }),
+            ("overview", { model.selection = [] }),
+            ("cards", {
+                model.viewMode = .grid
+                model.selection = appleTV.map { [$0.id] } ?? []
+            }),
+        ]
+        // The page background GitHub shows the image on (README picks the light or dark one), behind the rounded corners.
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let page = dark ? CGColor(srgbRed: 13 / 255, green: 17 / 255, blue: 23 / 255, alpha: 1) : .white
+        var failed = false
+        for (name, setUp) in shots {
+            setUp()
+            try? await Task.sleep(for: .seconds(1.5))
+            do {
+                try await captureWindow(window, width: 2400, background: page,
+                                        to: base.appendingPathComponent("\(name).jpg"))
+                log("\(name).jpg")
+            } catch {
+                log("\(name): \(error.localizedDescription)")
+                failed = true
+            }
+        }
+        log("DONE")
+        exit(failed ? 1 : 0)
+    }
+
+    /// Writes the window `width` pixels wide as JPEG, flattened onto `background`.
+    static func captureWindow(_ window: NSWindow, width: Int, background: CGColor, to url: URL) async throws {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let target = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let filter = SCContentFilter(desktopIndependentWindow: target)
+        let config = SCStreamConfiguration()
+        config.width = width
+        config.height = Int((CGFloat(width) * filter.contentRect.height / filter.contentRect.width).rounded())
+        config.showsCursor = false
+        config.ignoreShadowsSingleWindow = true
+        config.shouldBeOpaque = false
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        guard let ctx = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { throw CocoaError(.fileWriteUnknown) }
+        ctx.setFillColor(background)
+        ctx.fill(rect)
+        ctx.draw(image, in: rect)
+        guard let flat = ctx.makeImage(),
+              let data = NSBitmapImageRep(cgImage: flat).representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        else { throw CocoaError(.fileWriteUnknown) }
+        try data.write(to: url)
     }
 
     /// Shrinks and grows the window repeatedly to shake out layout feedback loops.
