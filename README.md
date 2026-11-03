@@ -40,6 +40,22 @@ Scripts/build.sh --open
 
 首次扫描时系统会请求"本地网络"权限，需要允许。
 
+## 发布
+
+推送 `v` 开头的 tag 即触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：运行测试，构建通用（Apple 芯片 + Intel）Release 并签名，把 `LanDetector-<版本>.zip` 及其 SHA-256 发布为 GitHub Release。版本号取自 tag，带后缀的 tag（如 `v1.1.0-beta.1`）发布为预发布版本。
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+签名用到的仓库 Secrets 都是可选的：
+
+- `DEVELOPER_ID_P12`、`DEVELOPER_ID_P12_PASSWORD`：`Developer ID Application` 证书（含私钥）导出的 .p12 的 base64 及其密码。缺省时改为 ad-hoc 签名：能扫描，但拿不到 MAC。
+- `NOTARY_APPLE_ID`、`NOTARY_PASSWORD`：公证用的 Apple ID 与 App 专用密码，需同时配置证书。
+
+在 Actions 页手动运行该 workflow 只构建并上传构件，不发布。
+
 ## 命令行调试
 
 核心引擎位于本地 Swift Package `Packages/LanDetectorKit`，附带命令行工具：

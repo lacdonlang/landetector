@@ -39,6 +39,9 @@ targets:
       path: LanDetector/Info.plist
       properties:
         CFBundleDisplayName: LanDetector
+        # Release builds set both from the git tag (.github/workflows/release.yml).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: zh-Hans
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
